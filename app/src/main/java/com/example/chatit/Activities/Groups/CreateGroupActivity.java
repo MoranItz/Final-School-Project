@@ -12,6 +12,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -69,6 +70,9 @@ public class CreateGroupActivity extends AppCompatActivity {
 
         setupRecyclerView();
         setupSearch();
+
+        ImageView backBtn = findViewById(R.id.backBtn);
+        backBtn.setOnClickListener(v -> finish());
 
         btnCreate.setOnClickListener(v -> finishGroupCreation());
     }

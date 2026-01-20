@@ -214,7 +214,7 @@ public class HomeActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
-    // Displays a popup menu at the settings button location with options like Logout.
+    // Displays a popup menu at the settings button location with options for Profile and Settings.
     // Input: View v (the view that was clicked to trigger the menu).
     // Output: None.
     private void showMenu(View v) {
@@ -222,8 +222,11 @@ public class HomeActivity extends AppCompatActivity {
         popup.getMenuInflater().inflate(R.menu.home_menu, popup.getMenu());
         popup.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
-            if (id == R.id.menu_logout) userLogout();
-            else Toast.makeText(this, item.getTitle() + " clicked", Toast.LENGTH_SHORT).show();
+            if (id == R.id.menu_profile) {
+                startActivity(new Intent(this, com.example.chatit.Activities.ProfileActivity.class));
+            } else if (id == R.id.menu_settings) {
+                startActivity(new Intent(this, com.example.chatit.Activities.SettingsActivity.class));
+            }
             return true;
         });
         popup.show();

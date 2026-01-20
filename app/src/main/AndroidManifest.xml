@@ -26,6 +26,8 @@
         <activity android:name=".Activities.LoginAndRegistration.IntroductionActivity" />
         <activity android:name=".Activities.Groups.CreateGroupActivity" />
         <activity android:name=".Activities.Groups.GroupChatActivity" />
+        <activity android:name=".Activities.ProfileActivity" />
+        <activity android:name=".Activities.SettingsActivity" />
     </application>
 
 </manifest>
