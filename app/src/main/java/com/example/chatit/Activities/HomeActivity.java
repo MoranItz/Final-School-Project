@@ -5,7 +5,10 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.widget.PopupMenu;
+import androidx.appcompat.widget.PopupMenu;
+import androidx.appcompat.view.ContextThemeWrapper;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import android.widget.TextView;
 import android.widget.ImageView;
 import androidx.appcompat.app.AppCompatActivity;
@@ -215,8 +218,28 @@ public class HomeActivity extends AppCompatActivity {
     // Input: View v (the view that was clicked to trigger the menu).
     // Output: None.
     private void showMenu(View v) {
-        PopupMenu popup = new PopupMenu(this, v);
+        // Use a themed context to apply the custom style with rounded corners and dark background
+        Context wrapper = new ContextThemeWrapper(this, R.style.CustomPopupMenu);
+        PopupMenu popup = new PopupMenu(wrapper, v);
         popup.getMenuInflater().inflate(R.menu.home_menu, popup.getMenu());
+
+        // Try to force show icons using reflection for a premium look
+        try {
+            Field[] fields = popup.getClass().getDeclaredFields();
+            for (Field field : fields) {
+                if ("mPopup".equals(field.getName())) {
+                    field.setAccessible(true);
+                    Object menuPopupHelper = field.get(popup);
+                    Class<?> classPopupHelper = Class.forName(menuPopupHelper.getClass().getName());
+                    Method setForceIcons = classPopupHelper.getMethod("setForceShowIcon", boolean.class);
+                    setForceIcons.invoke(menuPopupHelper, true);
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            Log.e("MENU", "Could not force icons", e);
+        }
+
         popup.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
             if (id == R.id.menu_profile) {

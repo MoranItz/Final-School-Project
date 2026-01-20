@@ -2,8 +2,18 @@
     <!-- Base application theme. -->
     <style name="Base.Theme.Chatit" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
     </style>
 
     <style name="Theme.Chatit" parent="Base.Theme.Chatit" />
+
+    <style name="CustomPopupMenu" parent="Widget.Material3.PopupMenu">
+        <item name="android:popupBackground">@drawable/menu_background</item>
+        <item name="android:itemTextAppearance">@style/CustomMenuTextAppearance</item>
+    </style>
+
+    <style name="CustomMenuTextAppearance" parent="TextAppearance.Material3.BodyLarge">
+        <!-- Matching the orange/yellow text theme -->
+        <item name="android:textColor">@color/primary_orange</item>
+        <item name="android:textStyle">bold</item>
+    </style>
 </resources>
