@@ -15,7 +15,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.chatit.Adapters.MessageAdapter;
 import com.example.chatit.R;
 import com.example.chatit.Struct_Classes.Message;
-import com.example.chatit.Helper_Classes.FireBaseHelper;
+
 
 import com.google.firebase.firestore.DocumentChange;
 import com.google.firebase.firestore.FirebaseFirestore;
