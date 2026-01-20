@@ -75,6 +75,18 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/groupNameDisplay" />
 
+    <ImageView
+        android:id="@+id/addMemberBtn"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="8dp"
+        android:src="@android:drawable/ic_menu_add"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/membersLabel"
+        app:layout_constraintStart_toEndOf="@id/membersLabel"
+        app:layout_constraintTop_toTopOf="@id/membersLabel"
+        app:tint="@color/primary_orange" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/groupMembersRecyclerView"
         android:layout_width="match_parent"

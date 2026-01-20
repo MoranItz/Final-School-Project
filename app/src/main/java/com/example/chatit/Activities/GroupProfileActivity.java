@@ -28,13 +28,17 @@ import com.example.chatit.Struct_Classes.Group;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.DocumentSnapshot;
 
+import android.widget.EditText;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class GroupProfileActivity extends AppCompatActivity {
 
-    private ImageView groupImageView, backBtn;
+    private ImageView groupImageView, backBtn, addMemberBtn;
     private TextView groupNameDisplay;
     private androidx.appcompat.widget.AppCompatButton actionButton;
     private RecyclerView membersRecyclerView;
@@ -74,6 +78,7 @@ public class GroupProfileActivity extends AppCompatActivity {
     private void initViews() {
         groupImageView = findViewById(R.id.groupImageView);
         backBtn = findViewById(R.id.backBtn);
+        addMemberBtn = findViewById(R.id.addMemberBtn);
         groupNameDisplay = findViewById(R.id.groupNameDisplay);
         membersRecyclerView = findViewById(R.id.groupMembersRecyclerView);
         actionButton = findViewById(R.id.actionButton);
@@ -99,8 +104,10 @@ public class GroupProfileActivity extends AppCompatActivity {
                         // Configure action button
                         if (currentUsername.equals(groupOwner)) {
                             actionButton.setText("Delete Group");
+                            addMemberBtn.setVisibility(View.VISIBLE);
                         } else {
                             actionButton.setText("Leave Group");
+                            addMemberBtn.setVisibility(View.GONE);
                         }
 
                         // Load image
@@ -167,6 +174,8 @@ public class GroupProfileActivity extends AppCompatActivity {
                 confirmLeaveGroup();
             }
         });
+
+        addMemberBtn.setOnClickListener(v -> showAddMemberDialog());
     }
 
     private void confirmDeleteGroup() {
@@ -288,6 +297,140 @@ public class GroupProfileActivity extends AppCompatActivity {
             if (imageUri != null) {
                 groupImageView.setImageURI(imageUri);
                 uploadGroupPicture(imageUri);
+            }
+        }
+    }
+
+    private void showAddMemberDialog() {
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.add_member_dialog, null);
+        AlertDialog dialog = new AlertDialog.Builder(this).setView(dialogView).create();
+
+        EditText searchInput = dialogView.findViewById(R.id.searchUserInput);
+        RecyclerView usersRv = dialogView.findViewById(R.id.usersRecyclerView);
+        androidx.appcompat.widget.AppCompatButton closeBtn = dialogView.findViewById(R.id.closeDialogBtn);
+        androidx.appcompat.widget.AppCompatButton confirmBtn = dialogView.findViewById(R.id.confirmAddBtn);
+
+        List<String> searchResults = new ArrayList<>();
+        Set<String> selectedToUpdate = new HashSet<>();
+        UserSearchAdapter searchAdapter = new UserSearchAdapter(searchResults, selectedToUpdate);
+        
+        usersRv.setLayoutManager(new LinearLayoutManager(this));
+        usersRv.setAdapter(searchAdapter);
+
+        searchInput.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (s.length() > 0) searchUsers(s.toString(), searchAdapter, searchResults);
+                else { searchResults.clear(); searchAdapter.notifyDataSetChanged(); }
+            }
+            @Override public void afterTextChanged(android.text.Editable s) {}
+        });
+
+        closeBtn.setOnClickListener(v -> dialog.dismiss());
+        confirmBtn.setOnClickListener(v -> {
+            if (selectedToUpdate.isEmpty()) {
+                Toast.makeText(this, "No users selected", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            addSelectedMembers(selectedToUpdate, dialog);
+        });
+
+        dialog.show();
+    }
+
+    private void searchUsers(String query, UserSearchAdapter adapter, List<String> results) {
+        db.collection("users")
+                .whereGreaterThanOrEqualTo("username", query)
+                .whereLessThanOrEqualTo("username", query + "\uf8ff")
+                .get()
+                .addOnSuccessListener(snapshots -> {
+                    results.clear();
+                    // Current members usernames for filtering
+                    Set<String> currentMemberNames = new HashSet<>();
+                    for (User u : memberList) currentMemberNames.add(u.getUsername());
+
+                    for (DocumentSnapshot doc : snapshots) {
+                        String name = doc.getString("username");
+                        if (name != null && !currentMemberNames.contains(name)) {
+                            results.add(name);
+                        }
+                    }
+                    adapter.notifyDataSetChanged();
+                });
+    }
+
+    private void addSelectedMembers(Set<String> usernames, AlertDialog dialog) {
+        List<String> userListToAdd = new ArrayList<>(usernames);
+        fetchAndAddRecursively(userListToAdd, 0, dialog);
+    }
+
+    private void fetchAndAddRecursively(List<String> usernames, int index, AlertDialog dialog) {
+        if (index >= usernames.size()) {
+            db.collection("groups").document(String.valueOf(groupId))
+                    .update("members", rawMembersData)
+                    .addOnSuccessListener(aVoid -> {
+                        Toast.makeText(this, "Members added successfully!", Toast.LENGTH_SHORT).show();
+                        loadGroupData();
+                        dialog.dismiss();
+                    });
+            return;
+        }
+
+        String username = usernames.get(index);
+        db.collection("users").document(username).get().addOnSuccessListener(doc -> {
+            if (doc.exists()) {
+                Map<String, Object> newMember = new HashMap<>();
+                newMember.put("username", username);
+                newMember.put("email", doc.getString("email"));
+                newMember.put("password", doc.getString("password"));
+                rawMembersData.add(newMember);
+            }
+            fetchAndAddRecursively(usernames, index + 1, dialog);
+        });
+    }
+
+    // Inner Search Adapter
+    private static class UserSearchAdapter extends RecyclerView.Adapter<UserSearchAdapter.ViewHolder> {
+        private final List<String> users;
+        private final Set<String> selected;
+
+        UserSearchAdapter(List<String> users, Set<String> selected) {
+            this.users = users;
+            this.selected = selected;
+        }
+
+        @NonNull
+        @Override
+        public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.member_item, parent, false);
+            return new ViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+            String name = users.get(position);
+            holder.name.setText(name);
+            holder.checkBox.setChecked(selected.contains(name));
+            holder.itemView.setOnClickListener(v -> {
+                holder.checkBox.setChecked(!holder.checkBox.isChecked());
+                if (holder.checkBox.isChecked()) selected.add(name);
+                else selected.remove(name);
+            });
+            holder.checkBox.setOnClickListener(v -> {
+                if (holder.checkBox.isChecked()) selected.add(name);
+                else selected.remove(name);
+            });
+        }
+
+        @Override public int getItemCount() { return users.size(); }
+
+        static class ViewHolder extends RecyclerView.ViewHolder {
+            TextView name;
+            android.widget.CheckBox checkBox;
+            ViewHolder(View v) {
+                super(v);
+                name = v.findViewById(R.id.memberName);
+                checkBox = v.findViewById(R.id.memberCheckbox);
             }
         }
     }
