@@ -28,6 +28,8 @@ import androidx.appcompat.widget.AppCompatButton;
 import com.example.chatit.R;
 import com.example.chatit.Struct_Classes.ImageUtils;
 import com.google.firebase.firestore.FirebaseFirestore;
+import java.util.List;
+import java.util.Map;
 
 public class ProfileActivity extends AppCompatActivity {
 
@@ -146,25 +148,51 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     // Deletes the user's account from Firestore, clears local session data, and returns to login screen.
+    // Also cleans up groups: deletes owned groups and removes user from others.
     // Input: None.
     // Output: None.
     private void deleteAccount() {
-        db.collection("users").document(currentUsername)
-                .delete()
-                .addOnSuccessListener(aVoid -> {
-                    // Clear user session
-                    SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
-                    prefs.edit().clear().apply();
+        // Step 1: Handle all groups (owned or member)
+        db.collection("groups").get().addOnSuccessListener(queryDocumentSnapshots -> {
+            for (com.google.firebase.firestore.DocumentSnapshot doc : queryDocumentSnapshots) {
+                String owner = doc.getString("owner");
+                String docId = doc.getId();
 
-                    Toast.makeText(this, "Account deleted", Toast.LENGTH_SHORT).show();
-                    
-                    // Return to introduction
-                    startActivity(new Intent(this, IntroductionActivity.class));
-                    finish();
-                })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(this, "Failed to delete account", Toast.LENGTH_SHORT).show();
-                });
+                if (currentUsername.equals(owner)) {
+                    // Scenario 1: User is the owner -> Delete the whole group
+                    db.collection("groups").document(docId).delete();
+                } else {
+                    // Scenario 2: User is a member -> Remove from members array
+                    List<Map<String, Object>> members = (List<Map<String, Object>>) doc.get("members");
+                    if (members != null) {
+                        boolean wasMember = members.removeIf(m -> currentUsername.equals(m.get("username")));
+                        if (wasMember) {
+                            db.collection("groups").document(docId).update("members", members);
+                        }
+                    }
+                }
+            }
+
+            // Step 2: Delete the user's main profile document
+            db.collection("users").document(currentUsername)
+                    .delete()
+                    .addOnSuccessListener(aVoid -> {
+                        // Clear user session
+                        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+                        prefs.edit().clear().apply();
+
+                        Toast.makeText(this, "Account deleted successfully", Toast.LENGTH_SHORT).show();
+
+                        // Return to introduction
+                        startActivity(new Intent(this, IntroductionActivity.class));
+                        finish();
+                    })
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(this, "Failed to delete account document", Toast.LENGTH_SHORT).show();
+                    });
+        }).addOnFailureListener(e -> {
+            Toast.makeText(this, "Error accessing groups for cleanup", Toast.LENGTH_SHORT).show();
+        });
     }
     
     // Shows dialog to choose between camera or gallery
