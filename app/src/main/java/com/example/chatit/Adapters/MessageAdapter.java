@@ -28,138 +28,145 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     private final String currentUser;
     private final Map<String, String> profilePicsCache = new HashMap<>();
 
-    // Constructor that sets the initial message list and identifies the current user to distinguish sent/received messages.
-    // Input: List<Message> messages (data source), String currentUser (the username of the person logged in).
+    // This function is responsible for creating the adapter with the message data and the current user's name.
+    // Input: List<Message> messages, String currentUser.
     // Output: None.
     public MessageAdapter(List<Message> messages, String currentUser) {
         this.messages = messages;
         this.currentUser = currentUser;
     }
 
-    // Determines whether a message was sent or received based on the sender's username.
-    // Input: int pos (position of the item in the list).
-    // Output: int (returns TYPE_SENT or TYPE_RECEIVED).
+    // This function is responsible for deciding if a message is sent or received.
+    // Input: int position (index in list).
+    // Output: int (view type constant).
     @Override
-    public int getItemViewType(int pos) {
-        // Compares the message sender with the local user to decide which layout to use
-        return messages.get(pos).getSender().equals(currentUser) ? TYPE_SENT : TYPE_RECEIVED;
+    public int getItemViewType(int position) {
+        return messages.get(position).getSender().equals(currentUser) ? TYPE_SENT : TYPE_RECEIVED;
     }
 
-    // Inflates the appropriate layout (left or right bubble) based on the view type.
-    // Input: ViewGroup parent (the RecyclerView), int viewType (the result from getItemViewType).
-    // Output: RecyclerView.ViewHolder (either SentViewHolder or ReceivedViewHolder).
+    // This function is responsible for creating the layout holder for each message item.
+    // Input: ViewGroup parent, int viewType.
+    // Output: RecyclerView.ViewHolder.
     @NonNull
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        // Choose the layout file based on whether the message is outgoing or incoming
-        int layout = (viewType == TYPE_SENT) ? R.layout.messagesent_item : R.layout.messagerecieved_item;
-        View view = LayoutInflater.from(parent.getContext()).inflate(layout, parent, false);
+        int layoutId = (viewType == TYPE_SENT) ? R.layout.messagesent_item : R.layout.messagerecieved_item;
+        View view = LayoutInflater.from(parent.getContext()).inflate(layoutId, parent, false);
         return (viewType == TYPE_SENT) ? new SentViewHolder(view) : new ReceivedViewHolder(view);
     }
 
-    // Identifies the specific ViewHolder type and binds the message data to the UI.
-    // Input: RecyclerView.ViewHolder holder (the generic holder), int pos (data position).
+    // This function is responsible for filling the message layout with data like text and time.
+    // Input: RecyclerView.ViewHolder holder, int position.
     // Output: None.
     @Override
-    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int pos) {
-        Message msg = messages.get(pos);
-        if (holder instanceof SentViewHolder) ((SentViewHolder) holder).bind(msg);
-        else if (holder instanceof ReceivedViewHolder) ((ReceivedViewHolder) holder).bind(msg, profilePicsCache);
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+        Message message = messages.get(position);
+        if (holder instanceof SentViewHolder) {
+            ((SentViewHolder) holder).bind(message);
+        } else if (holder instanceof ReceivedViewHolder) {
+            ((ReceivedViewHolder) holder).bind(message, profilePicsCache);
+        }
     }
 
-    // Returns the total number of messages in the chat history.
+    // This function is responsible for returning the total amount of messages in the list.
     // Input: None.
-    // Output: int (list size).
+    // Output: int (size).
     @Override
     public int getItemCount() { return messages.size(); }
 
-    // ViewHolder class for messages sent by the current user.
+    // This class is responsible for holding the UI parts for a sent message.
     static class SentViewHolder extends RecyclerView.ViewHolder {
-        TextView content, time;
-        SentViewHolder(View v) {
-            super(v);
-            content = v.findViewById(R.id.sentMessageText);
-            time = v.findViewById(R.id.sentMessageTime);
+        TextView contentText, timeText;
+        SentViewHolder(View view) {
+            super(view);
+            contentText = view.findViewById(R.id.sentMessageText);
+            timeText = view.findViewById(R.id.sentMessageTime);
         }
-        // Decrypts the message content and sets the formatted time.
-        void bind(Message msg) {
-            // Decodes the Base64 content back into readable text
-            content.setText(Message.base64Decryption(msg.getContent()));
-            time.setText(formatTime(msg.getTimestamp()));
+        
+        // This function is responsible for displaying the text and time for a sent message.
+        // Input: Message message.
+        // Output: None.
+        void bind(Message message) {
+            contentText.setText(Message.base64Decryption(message.getContent()));
+            timeText.setText(formatTime(message.getTimestamp()));
         }
     }
 
-    // ViewHolder class for messages received from other group members.
+    // This class is responsible for holding the UI parts for a received message.
     static class ReceivedViewHolder extends RecyclerView.ViewHolder {
-        TextView sender, content, time;
-        ImageView senderPic;
-        ReceivedViewHolder(View v) {
-            super(v);
-            sender = v.findViewById(R.id.senderName);
-            content = v.findViewById(R.id.receivedMessageText);
-            time = v.findViewById(R.id.receivedMessageTime);
-            senderPic = v.findViewById(R.id.senderProfilePic);
+        TextView senderName, contentText, timeText;
+        ImageView senderProfilePic;
+        ReceivedViewHolder(View view) {
+            super(view);
+            senderName = view.findViewById(R.id.senderName);
+            contentText = view.findViewById(R.id.receivedMessageText);
+            timeText = view.findViewById(R.id.receivedMessageTime);
+            senderProfilePic = view.findViewById(R.id.senderProfilePic);
         }
-        // Sets the sender's name, decrypts content, and displays the time.
-        void bind(Message msg, Map<String, String> cache) {
-            sender.setText(msg.getSender());
-            content.setText(Message.base64Decryption(msg.getContent()));
-            time.setText(formatTime(msg.getTimestamp()));
 
-            // Set profile picture
-            String senderName = msg.getSender();
-            if (cache.containsKey(senderName)) {
-                setPic(cache.get(senderName));
+        // This function is responsible for displaying the name, text, and PFP for a received message.
+        // Input: Message message, Map<String, String> cache.
+        // Output: None.
+        void bind(Message message, Map<String, String> cache) {
+            senderName.setText(message.getSender());
+            contentText.setText(Message.base64Decryption(message.getContent()));
+            timeText.setText(formatTime(message.getTimestamp()));
+
+            String sender = message.getSender();
+            if (cache.containsKey(sender)) {
+                setProfilePicFromBase64(cache.get(sender));
             } else {
-                senderPic.setImageResource(R.drawable.creategroup_icon);
-                FirebaseFirestore.getInstance().collection("users").document(senderName)
-                        .get().addOnSuccessListener(doc -> {
-                            if (doc.exists()) {
-                                String pic = doc.getString("profilePicture");
-                                if (pic != null) {
-                                    cache.put(senderName, pic);
-                                    setPic(pic);
+                senderProfilePic.setImageResource(R.drawable.creategroup_icon);
+                FirebaseFirestore.getInstance().collection("users").document(sender)
+                        .get().addOnSuccessListener(document -> {
+                            if (document.exists()) {
+                                String profilePicBase64 = document.getString("profilePicture");
+                                if (profilePicBase64 != null) {
+                                    cache.put(sender, profilePicBase64);
+                                    setProfilePicFromBase64(profilePicBase64);
                                 }
                             }
                         });
             }
         }
 
-        private void setPic(String base64) {
-            if (base64 == null || base64.isEmpty()) {
-                senderPic.setImageResource(R.drawable.creategroup_icon);
+        // This function is responsible for converting a Base64 string into a PFP image.
+        // Input: String base64Data.
+        // Output: None.
+        private void setProfilePicFromBase64(String base64Data) {
+            if (base64Data == null || base64Data.isEmpty()) {
+                senderProfilePic.setImageResource(R.drawable.creategroup_icon);
                 return;
             }
-            Bitmap bitmap = ImageUtils.convertBase64ToBitmap(base64);
+            Bitmap bitmap = ImageUtils.convertBase64ToBitmap(base64Data);
             if (bitmap != null) {
-                senderPic.setImageBitmap(bitmap);
+                senderProfilePic.setImageBitmap(bitmap);
             } else {
-                senderPic.setImageResource(R.drawable.creategroup_icon);
+                senderProfilePic.setImageResource(R.drawable.creategroup_icon);
             }
         }
     }
 
-    // Converts a long millisecond timestamp into a human-readable "hh:mm AM/PM" format.
-    // Input: long ts (the timestamp from Firestore).
+    // This function is responsible for formatting the raw timestamp into a readable time.
+    // Input: long timestamp.
     // Output: String (formatted time).
-    private static String formatTime(long ts) {
-        return new SimpleDateFormat("hh:mm a", Locale.getDefault()).format(new Date(ts));
+    private static String formatTime(long timestamp) {
+        return new SimpleDateFormat("hh:mm a", Locale.getDefault()).format(new Date(timestamp));
     }
 
-    // Replaces the entire message list and refreshes the adapter.
-    // Input: List<Message> newMessages (the full updated list).
+    // This function is responsible for replacing the entire message list with a new one.
+    // Input: List<Message> newMessages.
     // Output: None.
     public void updateMessages(List<Message> newMessages) {
         this.messages = newMessages;
         notifyDataSetChanged();
     }
 
-    // Appends a single new message to the end of the list and notifies the RecyclerView of the insertion.
-    // Input: Message msg (the new message object).
+    // This function is responsible for adding a single new message to the existing list.
+    // Input: Message newMessage.
     // Output: None.
-    public void addMessage(Message msg) {
-        this.messages.add(msg);
-        // Only refreshes the newly added item for better performance
+    public void addMessage(Message newMessage) {
+        this.messages.add(newMessage);
         notifyItemInserted(messages.size() - 1);
     }
 }

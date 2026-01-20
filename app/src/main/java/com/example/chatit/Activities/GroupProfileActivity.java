@@ -49,12 +49,15 @@ public class GroupProfileActivity extends AppCompatActivity {
     private String groupOwner;
     private String currentUsername;
     private FirebaseFirestore db;
-    private List<Map<String, Object>> rawMembersData; // Store raw data for updates
+    private List<Map<String, Object>> rawMembersData;
 
     private static final int PICK_IMAGE_REQUEST = 1;
     private static final int CAMERA_REQUEST = 2;
     private static final int PERMISSION_REQUEST_CODE = 100;
 
+    // This function is responsible for creating the activity and setting up the basic group information.
+    // Input: Bundle savedInstanceState (state of the activity).
+    // Output: None.
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -75,6 +78,9 @@ public class GroupProfileActivity extends AppCompatActivity {
         setupClickListeners();
     }
 
+    // This function is responsible for connecting the UI elements in the XML to the Java objects.
+    // Input: None.
+    // Output: None.
     private void initViews() {
         groupImageView = findViewById(R.id.groupImageView);
         backBtn = findViewById(R.id.backBtn);
@@ -93,6 +99,9 @@ public class GroupProfileActivity extends AppCompatActivity {
         membersRecyclerView.setAdapter(memberAdapter);
     }
 
+    // This function is responsible for fetching group details from Firestore and updating the UI.
+    // Input: None.
+    // Output: None.
     private void loadGroupData() {
         db.collection("groups").document(String.valueOf(groupId)).get()
                 .addOnSuccessListener(doc -> {
@@ -101,7 +110,6 @@ public class GroupProfileActivity extends AppCompatActivity {
                         groupOwner = doc.getString("owner");
                         groupNameDisplay.setText(name);
 
-                        // Configure action button
                         if (currentUsername.equals(groupOwner)) {
                             actionButton.setText("Delete Group");
                             addMemberBtn.setVisibility(View.VISIBLE);
@@ -110,7 +118,6 @@ public class GroupProfileActivity extends AppCompatActivity {
                             addMemberBtn.setVisibility(View.GONE);
                         }
 
-                        // Load image
                         String imageBase64 = doc.getString("imageBase64");
                         if (imageBase64 != null && !imageBase64.isEmpty()) {
                             Bitmap bitmap = ImageUtils.convertBase64ToBitmap(imageBase64);
@@ -119,10 +126,8 @@ public class GroupProfileActivity extends AppCompatActivity {
                             }
                         }
 
-                        // Load members
                         fetchMembers(doc);
                         
-                        // Only owner can change picture
                         if (!currentUsername.equals(groupOwner)) {
                             findViewById(R.id.cameraIconOverlay).setVisibility(View.GONE);
                         }
@@ -130,6 +135,9 @@ public class GroupProfileActivity extends AppCompatActivity {
                 });
     }
 
+    // This function is responsible for extracting the list of members from the group document.
+    // Input: DocumentSnapshot groupDoc (the group data from Firestore).
+    // Output: None.
     @SuppressWarnings("unchecked")
     private void fetchMembers(DocumentSnapshot groupDoc) {
         rawMembersData = (List<Map<String, Object>>) groupDoc.get("members");
@@ -138,7 +146,6 @@ public class GroupProfileActivity extends AppCompatActivity {
         memberList.clear();
         for (Map<String, Object> data : rawMembersData) {
             String username = (String) data.get("username");
-            // Fetch detailed user info (for bios) from users collection
             db.collection("users").document(username).get().addOnSuccessListener(userDoc -> {
                 if (userDoc.exists()) {
                     User user = new User(
@@ -155,6 +162,9 @@ public class GroupProfileActivity extends AppCompatActivity {
         }
     }
 
+    // This function is responsible for setting up actions for interactive UI elements.
+    // Input: None.
+    // Output: None.
     private void setupClickListeners() {
         backBtn.setOnClickListener(v -> finish());
 
@@ -178,6 +188,9 @@ public class GroupProfileActivity extends AppCompatActivity {
         addMemberBtn.setOnClickListener(v -> showAddMemberDialog());
     }
 
+    // This function is responsible for showing a confirmation message before deleting a group.
+    // Input: None.
+    // Output: None.
     private void confirmDeleteGroup() {
         new AlertDialog.Builder(this)
                 .setTitle("Delete Group")
@@ -187,6 +200,9 @@ public class GroupProfileActivity extends AppCompatActivity {
                 .show();
     }
 
+    // This function is responsible for removing the group document from Firestore.
+    // Input: None.
+    // Output: None.
     private void deleteGroup() {
         db.collection("groups").document(String.valueOf(groupId)).delete()
                 .addOnSuccessListener(aVoid -> {
@@ -199,6 +215,9 @@ public class GroupProfileActivity extends AppCompatActivity {
                 .addOnFailureListener(e -> Toast.makeText(this, "Failed to delete group", Toast.LENGTH_SHORT).show());
     }
 
+    // This function is responsible for showing a confirmation message before a member leaves the group.
+    // Input: None.
+    // Output: None.
     private void confirmLeaveGroup() {
         new AlertDialog.Builder(this)
                 .setTitle("Leave Group")
@@ -208,8 +227,11 @@ public class GroupProfileActivity extends AppCompatActivity {
                 .show();
     }
 
+    // This function is responsible for removing the user from the group members list in Firestore.
+    // Input: None.
+    // Output: None.
     private void leaveGroup() {
-        rawMembersData.removeIf(m -> currentUsername.equals(m.get("username")));
+        rawMembersData.removeIf(member -> currentUsername.equals(member.get("username")));
         db.collection("groups").document(String.valueOf(groupId))
                 .update("members", rawMembersData)
                 .addOnSuccessListener(aVoid -> {
@@ -222,6 +244,9 @@ public class GroupProfileActivity extends AppCompatActivity {
                 .addOnFailureListener(e -> Toast.makeText(this, "Failed to leave group", Toast.LENGTH_SHORT).show());
     }
 
+    // This function is responsible for showing a confirmation message before kicking a member.
+    // Input: String username (the user to be removed).
+    // Output: None.
     private void showKickDialog(String username) {
         new AlertDialog.Builder(this)
                 .setTitle("Remove Member")
@@ -231,17 +256,23 @@ public class GroupProfileActivity extends AppCompatActivity {
                 .show();
     }
 
+    // This function is responsible for removing a specific member from the group list in Firestore.
+    // Input: String username (the user to be removed).
+    // Output: None.
     private void kickUser(String username) {
-        rawMembersData.removeIf(m -> username.equals(m.get("username")));
+        rawMembersData.removeIf(member -> username.equals(member.get("username")));
         db.collection("groups").document(String.valueOf(groupId))
                 .update("members", rawMembersData)
                 .addOnSuccessListener(aVoid -> {
                     Toast.makeText(this, username + " was removed", Toast.LENGTH_SHORT).show();
-                    loadGroupData(); // Refresh list
+                    loadGroupData();
                 })
                 .addOnFailureListener(e -> Toast.makeText(this, "Failed to remove user", Toast.LENGTH_SHORT).show());
     }
 
+    // This function is responsible for presenting options to the user for choosing a new group image.
+    // Input: None.
+    // Output: None.
     private void showImagePickerDialog() {
         String[] options = {"Take Photo", "Choose from Gallery", "Cancel"};
         new AlertDialog.Builder(this)
@@ -252,6 +283,9 @@ public class GroupProfileActivity extends AppCompatActivity {
                 }).show();
     }
 
+    // This function is responsible for requesting camera access from the user.
+    // Input: None.
+    // Output: None.
     private void checkCameraPermissionAndOpen() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
@@ -260,6 +294,9 @@ public class GroupProfileActivity extends AppCompatActivity {
         } else openCamera();
     }
 
+    // This function is responsible for requesting storage or media access from the user.
+    // Input: None.
+    // Output: None.
     private void checkGalleryPermissionAndOpen() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (checkSelfPermission(Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED) {
@@ -272,16 +309,25 @@ public class GroupProfileActivity extends AppCompatActivity {
         } else openGallery();
     }
 
+    // This function is responsible for launching the device camera application.
+    // Input: None.
+    // Output: None.
     private void openCamera() {
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         if (intent.resolveActivity(getPackageManager()) != null) startActivityForResult(intent, CAMERA_REQUEST);
     }
 
+    // This function is responsible for launching the device image gallery.
+    // Input: None.
+    // Output: None.
     private void openGallery() {
         Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         startActivityForResult(intent, PICK_IMAGE_REQUEST);
     }
 
+    // This function is responsible for handling the results from the camera or gallery activities.
+    // Input: int requestCode, int resultCode, Intent data.
+    // Output: None.
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -301,12 +347,15 @@ public class GroupProfileActivity extends AppCompatActivity {
         }
     }
 
+    // This function is responsible for showing a dialog to find and add new users to the group.
+    // Input: None.
+    // Output: None.
     private void showAddMemberDialog() {
         View dialogView = LayoutInflater.from(this).inflate(R.layout.add_member_dialog, null);
         AlertDialog dialog = new AlertDialog.Builder(this).setView(dialogView).create();
 
         EditText searchInput = dialogView.findViewById(R.id.searchUserInput);
-        RecyclerView usersRv = dialogView.findViewById(R.id.usersRecyclerView);
+        RecyclerView usersRecyclerView = dialogView.findViewById(R.id.usersRecyclerView);
         androidx.appcompat.widget.AppCompatButton closeBtn = dialogView.findViewById(R.id.closeDialogBtn);
         androidx.appcompat.widget.AppCompatButton confirmBtn = dialogView.findViewById(R.id.confirmAddBtn);
 
@@ -314,8 +363,8 @@ public class GroupProfileActivity extends AppCompatActivity {
         Set<String> selectedToUpdate = new HashSet<>();
         UserSearchAdapter searchAdapter = new UserSearchAdapter(searchResults, selectedToUpdate);
         
-        usersRv.setLayoutManager(new LinearLayoutManager(this));
-        usersRv.setAdapter(searchAdapter);
+        usersRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        usersRecyclerView.setAdapter(searchAdapter);
 
         searchInput.addTextChangedListener(new android.text.TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -338,6 +387,9 @@ public class GroupProfileActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    // This function is responsible for querying Firestore for users that match a search string.
+    // Input: String query, UserSearchAdapter adapter, List<String> results.
+    // Output: None.
     private void searchUsers(String query, UserSearchAdapter adapter, List<String> results) {
         db.collection("users")
                 .whereGreaterThanOrEqualTo("username", query)
@@ -345,7 +397,6 @@ public class GroupProfileActivity extends AppCompatActivity {
                 .get()
                 .addOnSuccessListener(snapshots -> {
                     results.clear();
-                    // Current members usernames for filtering
                     Set<String> currentMemberNames = new HashSet<>();
                     for (User u : memberList) currentMemberNames.add(u.getUsername());
 
@@ -359,11 +410,17 @@ public class GroupProfileActivity extends AppCompatActivity {
                 });
     }
 
+    // This function is responsible for starting the process of adding selected users to the group.
+    // Input: Set<String> usernames (set of names to add), AlertDialog dialog (the open dialog).
+    // Output: None.
     private void addSelectedMembers(Set<String> usernames, AlertDialog dialog) {
-        List<String> userListToAdd = new ArrayList<>(usernames);
-        fetchAndAddRecursively(userListToAdd, 0, dialog);
+        List<String> listToProcess = new ArrayList<>(usernames);
+        fetchAndAddRecursively(listToProcess, 0, dialog);
     }
 
+    // This function is responsible for fetching each selected user and adding them to the group list.
+    // Input: List<String> usernames, int index, AlertDialog dialog.
+    // Output: None.
     private void fetchAndAddRecursively(List<String> usernames, int index, AlertDialog dialog) {
         if (index >= usernames.size()) {
             db.collection("groups").document(String.valueOf(groupId))
@@ -379,17 +436,17 @@ public class GroupProfileActivity extends AppCompatActivity {
         String username = usernames.get(index);
         db.collection("users").document(username).get().addOnSuccessListener(doc -> {
             if (doc.exists()) {
-                Map<String, Object> newMember = new HashMap<>();
-                newMember.put("username", username);
-                newMember.put("email", doc.getString("email"));
-                newMember.put("password", doc.getString("password"));
-                rawMembersData.add(newMember);
+                Map<String, Object> newMemberEntry = new HashMap<>();
+                newMemberEntry.put("username", username);
+                newMemberEntry.put("email", doc.getString("email"));
+                newMemberEntry.put("password", doc.getString("password"));
+                rawMembersData.add(newMemberEntry);
             }
             fetchAndAddRecursively(usernames, index + 1, dialog);
         });
     }
 
-    // Inner Search Adapter
+    // This class is responsible for managing the small list of users found during a search.
     private static class UserSearchAdapter extends RecyclerView.Adapter<UserSearchAdapter.ViewHolder> {
         private final List<String> users;
         private final Set<String> selected;
@@ -435,6 +492,9 @@ public class GroupProfileActivity extends AppCompatActivity {
         }
     }
 
+    // This function is responsible for converting the group image to Base64 and saving it to Firestore.
+    // Input: Uri uri (location of the image).
+    // Output: None.
     private void uploadGroupPicture(Uri uri) {
         String base64String = ImageUtils.convertImageToBase64(this, uri);
         if (base64String == null) return;
@@ -445,7 +505,7 @@ public class GroupProfileActivity extends AppCompatActivity {
                 .addOnFailureListener(e -> Toast.makeText(this, "Upload failed", Toast.LENGTH_SHORT).show());
     }
 
-    // Member Adapter Inner Class
+    // This class is responsible for displaying the main member list for the group.
     private static class MemberAdapter extends RecyclerView.Adapter<MemberAdapter.ViewHolder> {
         private final List<User> members;
         private final OnItemClickListener listener;
@@ -472,7 +532,6 @@ public class GroupProfileActivity extends AppCompatActivity {
             holder.name.setText(user.getUsername());
             holder.bio.setText(user.getBiography() != null ? user.getBiography() : "No bio available");
             
-            // Set member profile picture
             String profilePicBase64 = user.getProfilePicture();
             if (profilePicBase64 != null && !profilePicBase64.isEmpty()) {
                 Bitmap bitmap = ImageUtils.convertBase64ToBitmap(profilePicBase64);

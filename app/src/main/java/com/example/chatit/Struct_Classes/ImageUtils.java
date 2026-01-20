@@ -7,72 +7,65 @@ import android.net.Uri;
 import android.util.Base64;
 
 import java.io.ByteArrayOutputStream;
-import java.io.FileNotFoundException;
 import java.io.InputStream;
 
 public class ImageUtils {
 
-    // Converts an image URI to a base64 encoded string.
-    // Input: Context context (app context), Uri imageUri (the image URI from gallery/camera).
-    // Output: String (base64 encoded image) or null if conversion fails.
+    // This function is responsible for converting an image file into a Base64 string for storage.
+    // Input: Context context, Uri imageUri.
+    // Output: String (Base64 encoded image).
     public static String convertImageToBase64(Context context, Uri imageUri) {
         try {
-            // Open input stream from the URI
-            InputStream inputStream = context.getContentResolver().openInputStream(imageUri);
-            if (inputStream == null) return null;
+            InputStream stream = context.getContentResolver().openInputStream(imageUri);
+            if (stream == null) return null;
 
-            // Decode the image into a Bitmap
-            Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-            inputStream.close();
+            Bitmap image = BitmapFactory.decodeStream(stream);
+            stream.close();
 
-            // Compress and resize if needed (to avoid large base64 strings)
-            bitmap = resizeBitmap(bitmap, 800); // Max 800px width/height
+            // Shrink the image so it takes less space in the database
+            image = resizeImage(image, 800);
 
-            // Convert bitmap to byte array
-            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, byteArrayOutputStream); // 80% quality
-            byte[] byteArray = byteArrayOutputStream.toByteArray();
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            image.compress(Bitmap.CompressFormat.JPEG, 80, outputStream);
+            byte[] bytes = outputStream.toByteArray();
 
-            // Encode to base64
-            return Base64.encodeToString(byteArray, Base64.DEFAULT);
+            return Base64.encodeToString(bytes, Base64.DEFAULT);
 
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (Exception error) {
+            error.printStackTrace();
             return null;
         }
     }
 
-    // Converts a base64 string back to a Bitmap image.
-    // Input: String base64String (the base64 encoded image).
-    // Output: Bitmap (decoded image) or null if decoding fails.
-    public static Bitmap convertBase64ToBitmap(String base64String) {
-        if (base64String == null || base64String.isEmpty()) return null;
+    // This function is responsible for turning a Base64 string back into a viewable image.
+    // Input: String base64Data.
+    // Output: Bitmap (the decoded image).
+    public static Bitmap convertBase64ToBitmap(String base64Data) {
+        if (base64Data == null || base64Data.isEmpty()) return null;
         try {
-            byte[] decodedBytes = Base64.decode(base64String, Base64.DEFAULT);
-            return BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
-        } catch (Exception e) {
-            e.printStackTrace();
+            byte[] imageBytes = Base64.decode(base64Data, Base64.DEFAULT);
+            return BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+        } catch (Exception error) {
+            error.printStackTrace();
             return null;
         }
     }
 
-    // Resizes a bitmap to fit within a maximum dimension while maintaining aspect ratio.
-    // Input: Bitmap bitmap (original image), int maxSize (maximum width or height).
-    // Output: Bitmap (resized image).
-    private static Bitmap resizeBitmap(Bitmap bitmap, int maxSize) {
-        int width = bitmap.getWidth();
-        int height = bitmap.getHeight();
+    // This function is responsible for scaling down an image if it is too large.
+    // Input: Bitmap originalImage, int maximumSize.
+    // Output: Bitmap (the resized image).
+    private static Bitmap resizeImage(Bitmap originalImage, int maximumSize) {
+        int originalWidth = originalImage.getWidth();
+        int originalHeight = originalImage.getHeight();
 
-        // Check if resizing is needed
-        if (width <= maxSize && height <= maxSize) {
-            return bitmap;
+        if (originalWidth <= maximumSize && originalHeight <= maximumSize) {
+            return originalImage;
         }
 
-        // Calculate new dimensions maintaining aspect ratio
-        float ratio = Math.min((float) maxSize / width, (float) maxSize / height);
-        int newWidth = Math.round(width * ratio);
-        int newHeight = Math.round(height * ratio);
+        float scaleFactor = Math.min((float) maximumSize / originalWidth, (float) maximumSize / originalHeight);
+        int finalWidth = Math.round(originalWidth * scaleFactor);
+        int finalHeight = Math.round(originalHeight * scaleFactor);
 
-        return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true);
+        return Bitmap.createScaledBitmap(originalImage, finalWidth, finalHeight, true);
     }
 }
