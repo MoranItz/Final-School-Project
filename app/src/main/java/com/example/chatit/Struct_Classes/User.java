@@ -104,20 +104,4 @@ public class User {
         context.startActivity(intent);
         context.finish();
     }
-
-    // Deletes the user's document from Firestore after performing a final password verification.
-    // Input: String username (user to delete), String password (verification password), Activity context (current activity).
-    // Output: None.
-    public static void deleteUser(String username, String password, Activity context) {
-        DocumentReference ref = FirebaseFirestore.getInstance().collection("users").document(username);
-        ref.get().addOnCompleteListener(task -> {
-            if (!task.isSuccessful() || !task.getResult().exists()) return;
-            // Ensure the user provides the correct password before deleting their account data
-            if (password.equals(task.getResult().getString("password"))) {
-                ref.delete();
-                Toast.makeText(context, "User deleted!", Toast.LENGTH_SHORT).show();
-                context.finish();
-            }
-        });
-    }
 }

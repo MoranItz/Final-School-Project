@@ -5,28 +5,40 @@
     android:layout_height="wrap_content"
     android:padding="4dp">
 
+    <ImageView
+        android:id="@+id/senderProfilePic"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginStart="4dp"
+        android:background="@drawable/button_background"
+        android:scaleType="centerCrop"
+        android:src="@drawable/creategroup_icon"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <TextView
         android:id="@+id/senderName"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="4dp"
+        android:layout_marginStart="8dp"
         android:text="John Doe"
         android:textColor="@color/primary_orange"
         android:textSize="12sp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintStart_toEndOf="@id/senderProfilePic"
+        app:layout_constraintTop_toTopOf="@id/senderProfilePic" />
 
     <TextView
         android:id="@+id/receivedMessageText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
         android:layout_marginTop="2dp"
         android:background="@drawable/received_message_background"
         android:padding="12dp"
         android:text="Received message content"
         android:textColor="@color/white"
         android:textSize="16sp"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintStart_toEndOf="@id/senderProfilePic"
         app:layout_constraintTop_toBottomOf="@id/senderName" />
 
     <TextView

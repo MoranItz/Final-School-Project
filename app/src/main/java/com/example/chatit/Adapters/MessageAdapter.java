@@ -4,20 +4,29 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.ImageView;
+import android.graphics.Bitmap;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.example.chatit.R;
 import com.example.chatit.Struct_Classes.Message;
+import com.example.chatit.Struct_Classes.ImageUtils;
+import com.google.firebase.firestore.FirebaseFirestore;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private static final int TYPE_SENT = 1, TYPE_RECEIVED = 2;
     private List<Message> messages;
     private final String currentUser;
+    private final Map<String, String> profilePicsCache = new HashMap<>();
 
     // Constructor that sets the initial message list and identifies the current user to distinguish sent/received messages.
     // Input: List<Message> messages (data source), String currentUser (the username of the person logged in).
@@ -55,7 +64,7 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int pos) {
         Message msg = messages.get(pos);
         if (holder instanceof SentViewHolder) ((SentViewHolder) holder).bind(msg);
-        else if (holder instanceof ReceivedViewHolder) ((ReceivedViewHolder) holder).bind(msg);
+        else if (holder instanceof ReceivedViewHolder) ((ReceivedViewHolder) holder).bind(msg, profilePicsCache);
     }
 
     // Returns the total number of messages in the chat history.
@@ -83,17 +92,50 @@ public class MessageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     // ViewHolder class for messages received from other group members.
     static class ReceivedViewHolder extends RecyclerView.ViewHolder {
         TextView sender, content, time;
+        ImageView senderPic;
         ReceivedViewHolder(View v) {
             super(v);
             sender = v.findViewById(R.id.senderName);
             content = v.findViewById(R.id.receivedMessageText);
             time = v.findViewById(R.id.receivedMessageTime);
+            senderPic = v.findViewById(R.id.senderProfilePic);
         }
         // Sets the sender's name, decrypts content, and displays the time.
-        void bind(Message msg) {
+        void bind(Message msg, Map<String, String> cache) {
             sender.setText(msg.getSender());
             content.setText(Message.base64Decryption(msg.getContent()));
             time.setText(formatTime(msg.getTimestamp()));
+
+            // Set profile picture
+            String senderName = msg.getSender();
+            if (cache.containsKey(senderName)) {
+                setPic(cache.get(senderName));
+            } else {
+                senderPic.setImageResource(R.drawable.creategroup_icon);
+                FirebaseFirestore.getInstance().collection("users").document(senderName)
+                        .get().addOnSuccessListener(doc -> {
+                            if (doc.exists()) {
+                                String pic = doc.getString("profilePicture");
+                                if (pic != null) {
+                                    cache.put(senderName, pic);
+                                    setPic(pic);
+                                }
+                            }
+                        });
+            }
+        }
+
+        private void setPic(String base64) {
+            if (base64 == null || base64.isEmpty()) {
+                senderPic.setImageResource(R.drawable.creategroup_icon);
+                return;
+            }
+            Bitmap bitmap = ImageUtils.convertBase64ToBitmap(base64);
+            if (bitmap != null) {
+                senderPic.setImageBitmap(bitmap);
+            } else {
+                senderPic.setImageResource(R.drawable.creategroup_icon);
+            }
         }
     }
 
