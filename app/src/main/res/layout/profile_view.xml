@@ -60,7 +60,7 @@
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:layout_marginTop="8dp"
-            android:background="@drawable/edit_text_background"
+            android:background="@color/background_black"
             android:hint="Your Name"
             android:paddingHorizontal="16dp"
             android:textColor="@color/white"
