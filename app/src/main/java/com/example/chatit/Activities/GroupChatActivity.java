@@ -1,4 +1,4 @@
-package com.example.chatit.Activities.Groups;
+package com.example.chatit.Activities;
 
 import android.content.Context;
 import android.content.SharedPreferences;

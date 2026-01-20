@@ -1,4 +1,4 @@
-package com.example.chatit.Activities.Groups;
+package com.example.chatit.Activities;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -25,7 +25,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.chatit.R;
 import com.example.chatit.Struct_Classes.Group;
 import com.example.chatit.Struct_Classes.User;
-import com.example.chatit.HomeActivity;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 

@@ -7,7 +7,6 @@ import android.widget.ImageView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.AppCompatButton;
 
-import com.example.chatit.Activities.LoginAndRegistration.IntroductionActivity;
 import com.example.chatit.R;
 
 public class SettingsActivity extends AppCompatActivity {

@@ -1,4 +1,4 @@
-package com.example.chatit.Activities.LoginAndRegistration;
+package com.example.chatit.Activities;
 
 import android.content.Intent;
 import android.os.Bundle;

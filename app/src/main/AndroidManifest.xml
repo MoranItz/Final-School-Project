@@ -21,11 +21,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".Activities.LoginAndRegistration.LoginActivity" />
-        <activity android:name=".Activities.LoginAndRegistration.RegisterActivity" />
-        <activity android:name=".Activities.LoginAndRegistration.IntroductionActivity" />
-        <activity android:name=".Activities.Groups.CreateGroupActivity" />
-        <activity android:name=".Activities.Groups.GroupChatActivity" />
+        <activity android:name=".Activities.LoginActivity" />
+        <activity android:name=".Activities.RegisterActivity" />
+        <activity android:name=".Activities.IntroductionActivity" />
+        <activity android:name=".Activities.CreateGroupActivity" />
+        <activity android:name=".Activities.GroupChatActivity" />
         <activity android:name=".Activities.ProfileActivity" />
         <activity android:name=".Activities.SettingsActivity" />
     </application>

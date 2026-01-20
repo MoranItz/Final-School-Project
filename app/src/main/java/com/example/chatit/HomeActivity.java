@@ -7,15 +7,14 @@ import android.util.Log;
 import android.view.View;
 import android.widget.PopupMenu;
 import android.widget.TextView;
-import android.widget.Toast;
 import android.widget.ImageView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.chatit.Activities.Groups.CreateGroupActivity;
-import com.example.chatit.Activities.Groups.GroupChatActivity;
-import com.example.chatit.Activities.LoginAndRegistration.IntroductionActivity;
+import com.example.chatit.Activities.CreateGroupActivity;
+import com.example.chatit.Activities.GroupChatActivity;
+import com.example.chatit.Activities.IntroductionActivity;
 import com.example.chatit.Adapters.GroupAdapter;
 import com.example.chatit.Struct_Classes.Group;
 import com.example.chatit.Struct_Classes.User;
