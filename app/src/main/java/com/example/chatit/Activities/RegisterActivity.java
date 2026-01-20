@@ -13,57 +13,64 @@ import com.example.chatit.Struct_Classes.User;
 
 public class RegisterActivity extends AppCompatActivity {
 
-    // The variables from the layout file
-    private EditText etUsername, etEmail, etPassword;
-    public Button btnRegister;
-    public TextView loginLink;
+    private EditText usernameInputField, emailInputField, passwordInputField;
+    private Button registerActionButton;
+    private TextView loginRedirectLink;
 
+    // This function is responsible for setting up the registration screen and connecting listeners.
+    // Input: Bundle savedInstanceState (the saved state of the activity).
+    // Output: None.
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
-        // Initiate layout instance
         super.onCreate(savedInstanceState);
         setContentView(R.layout.register_view);
 
-        // Find the user input variables in the .xml file
-        etUsername = findViewById(R.id.nameInput);
-        etEmail = findViewById(R.id.emailInput);
-        etPassword = findViewById(R.id.passwordInput);
-        btnRegister = findViewById(R.id.registerButton);
-        loginLink = findViewById(R.id.loginLink);
-
-
-        // When the user Tries to register (Presses the button)
-        btnRegister.setOnClickListener(v -> handleRegistration());
-        loginLink.setOnClickListener(v -> navigateToLogin());
+        initializeComponents();
+        setupClickActions();
     }
 
-    private void navigateToLogin() {
-        Intent intent = new Intent(this, LoginActivity.class);
-        this.startActivity(intent);
-        this.finish();
+    // This function is responsible for linking the Java objects to the XML layout components.
+    // Input: None.
+    // Output: None.
+    private void initializeComponents() {
+        usernameInputField = findViewById(R.id.nameInput);
+        emailInputField = findViewById(R.id.emailInput);
+        passwordInputField = findViewById(R.id.passwordInput);
+        registerActionButton = findViewById(R.id.registerButton);
+        loginRedirectLink = findViewById(R.id.loginLink);
     }
 
-    // This function is in charge of handling the user registration.
-    // It is activated after the user tried to register using the button.
-    // Input: None
-    // Output: Void
-    private void handleRegistration() {
+    // This function is responsible for defining the user interactions for registration and navigation.
+    // Input: None.
+    // Output: None.
+    private void setupClickActions() {
+        registerActionButton.setOnClickListener(v -> initiateRegistrationSequence());
+        loginRedirectLink.setOnClickListener(v -> jumpBackToLogin());
+    }
 
-        // Get the data from the .xml file view
-        String username = etUsername.getText().toString().trim();
-        String email = etEmail.getText().toString().trim();
-        String password = etPassword.getText().toString().trim();
+    // This function is responsible for closing the current screen and returning to the login activity.
+    // Input: None.
+    // Output: None.
+    private void jumpBackToLogin() {
+        Intent loginIntent = new Intent(this, LoginActivity.class);
+        startActivity(loginIntent);
+        finish();
+    }
 
-        // If any of the variables are empty notify user of the error
-        if (username.isEmpty() || email.isEmpty() || password.isEmpty()) {
+    // This function is responsible for gathering data from inputs and registering a new account.
+    // Input: None.
+    // Output: None.
+    private void initiateRegistrationSequence() {
+        String inputName = usernameInputField.getText().toString().trim();
+        String inputEmail = emailInputField.getText().toString().trim();
+        String inputPassword = passwordInputField.getText().toString().trim();
+
+        if (inputName.isEmpty() || inputEmail.isEmpty() || inputPassword.isEmpty()) {
             Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Create new user object
-        User newUser = new User(username, password, email);
-        // Register user using the "registerUser" function
-        User.registerUser(newUser, this);
+        User newlyCreatedUser = new User(inputName, inputPassword, inputEmail);
+        User.registerUser(newlyCreatedUser, this);
     }
 }

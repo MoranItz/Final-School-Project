@@ -19,7 +19,6 @@ import com.example.chatit.Struct_Classes.Message;
 import com.example.chatit.Struct_Classes.ImageUtils;
 import android.graphics.Bitmap;
 
-
 import com.google.firebase.firestore.DocumentChange;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
@@ -31,65 +30,62 @@ import java.util.List;
 
 public class GroupChatActivity extends AppCompatActivity {
 
-    private EditText etMessageInput;
-    private RecyclerView recyclerViewMessages;
+    private EditText messageInput;
+    private RecyclerView messagesRecyclerView;
     private MessageAdapter messageAdapter;
     private List<Message> messageList;
 
     private int groupId;
     private String currentUsername;
-    private FirebaseFirestore db;
-    private ListenerRegistration messageListener;
+    private FirebaseFirestore database;
+    private ListenerRegistration chatListener;
 
-    // Initializes the chat activity and calls the sequence of setup methods to prepare the UI and database.
-    // Input: Bundle savedInstanceState (the saved state of the activity).
+    // This function is responsible for initializing the activity and starting the setup operations.
+    // Input: Bundle savedInstanceState (the saved state).
     // Output: None.
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.groupchat_view);
 
-        // Stop initialization if group data cannot be retrieved from the Intent
-        if (!initializeGroupData()) return;
+        if (!loadGroupInformation()) return;
 
         initializeFirebase();
         initializeViews();
         setupRecyclerView();
         setupClickListeners();
-        loadMessages();
-        setupRealtimeListener();
+        loadInitialMessages();
+        startRealtimeUpdates();
     }
 
-    // Retrieves the group ID and name from the Intent and the sender's username from SharedPreferences.
+    // This function is responsible for getting group and user data from the intent and local storage.
     // Input: None.
-    // Output: boolean (true if data was loaded successfully, false otherwise).
-    private boolean initializeGroupData() {
+    // Output: boolean (returns true if data was found).
+    private boolean loadGroupInformation() {
         groupId = getIntent().getIntExtra("groupId", -1);
         String groupName = getIntent().getStringExtra("groupName");
 
-        // Validate that a valid group ID was passed to avoid database errors
         if (groupId == -1) {
             Toast.makeText(this, "Error loading group", Toast.LENGTH_SHORT).show();
             finish();
             return false;
         }
 
-        SharedPreferences prefs = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE);
-        currentUsername = prefs.getString("username", "");
+        SharedPreferences preferences = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE);
+        currentUsername = preferences.getString("username", "");
 
-        TextView tvGroupName = findViewById(R.id.chatTitle);
-        tvGroupName.setText(groupName);
+        TextView titleView = findViewById(R.id.chatTitle);
+        titleView.setText(groupName);
 
-        ImageView ivGroupPic = findViewById(R.id.groupChatImageView);
-        // Fetch group image from Firestore
+        ImageView groupImageView = findViewById(R.id.groupChatImageView);
         FirebaseFirestore.getInstance().collection("groups").document(String.valueOf(groupId))
-                .get().addOnSuccessListener(doc -> {
-                    if (doc.exists()) {
-                        String imageBase64 = doc.getString("imageBase64");
+                .get().addOnSuccessListener(document -> {
+                    if (document.exists()) {
+                        String imageBase64 = document.getString("imageBase64");
                         if (imageBase64 != null && !imageBase64.isEmpty()) {
                             Bitmap bitmap = ImageUtils.convertBase64ToBitmap(imageBase64);
                             if (bitmap != null) {
-                                ivGroupPic.setImageBitmap(bitmap);
+                                groupImageView.setImageBitmap(bitmap);
                             }
                         }
                     }
@@ -98,22 +94,22 @@ public class GroupChatActivity extends AppCompatActivity {
         return true;
     }
 
-    // Gets the singleton instance of the Firestore database.
+    // This function is responsible for getting the database instance.
     // Input: None.
     // Output: None.
     private void initializeFirebase() {
-        db = FirebaseFirestore.getInstance();
+        database = FirebaseFirestore.getInstance();
     }
 
-    // Connects the class variables to the specific views defined in the XML layout.
+    // This function is responsible for connecting properties to the XML layout components.
     // Input: None.
     // Output: None.
     private void initializeViews() {
-        etMessageInput = findViewById(R.id.messageInput);
-        recyclerViewMessages = findViewById(R.id.chatRecyclerView);
+        messageInput = findViewById(R.id.messageInput);
+        messagesRecyclerView = findViewById(R.id.chatRecyclerView);
     }
 
-    // Prepares the RecyclerView with an adapter and a layout manager that stacks items from the bottom.
+    // This function is responsible for configuring the RecyclerView for displaying chat bubbles.
     // Input: None.
     // Output: None.
     private void setupRecyclerView() {
@@ -121,172 +117,156 @@ public class GroupChatActivity extends AppCompatActivity {
         messageAdapter = new MessageAdapter(messageList, currentUsername);
 
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
-        // Ensure that new messages appear at the bottom of the list
         layoutManager.setStackFromEnd(true);
 
-        recyclerViewMessages.setLayoutManager(layoutManager);
-        recyclerViewMessages.setAdapter(messageAdapter);
+        messagesRecyclerView.setLayoutManager(layoutManager);
+        messagesRecyclerView.setAdapter(messageAdapter);
     }
 
-    // Sets up the click events for the back button and the message send button.
+    // This function is responsible for handling clicks on the back button, send button, and group title.
     // Input: None.
     // Output: None.
     private void setupClickListeners() {
-        ImageView btnBack = findViewById(R.id.backBtn);
-        ImageView btnSend = findViewById(R.id.sendBtn);
-        TextView tvGroupName = findViewById(R.id.chatTitle);
+        ImageView backButton = findViewById(R.id.backBtn);
+        ImageView sendButton = findViewById(R.id.sendBtn);
+        TextView titleView = findViewById(R.id.chatTitle);
 
-        btnBack.setOnClickListener(v -> finish());
-        btnSend.setOnClickListener(v -> sendMessage());
+        backButton.setOnClickListener(v -> finish());
+        sendButton.setOnClickListener(v -> sendNewMessage());
         
-        // Open group profile when clicking group name
-        tvGroupName.setOnClickListener(v -> {
+        titleView.setOnClickListener(v -> {
             Intent intent = new Intent(this, GroupProfileActivity.class);
             intent.putExtra("groupId", groupId);
             startActivity(intent);
         });
     }
 
-    // Fetches the initial set of messages from the Firestore database for the current group.
+    // This function is responsible for downloading existing messages once when the screen opens.
     // Input: None.
     // Output: None.
-    private void loadMessages() {
-        getMessagesQuery()
+    private void loadInitialMessages() {
+        createMessageQuery()
                 .get()
                 .addOnSuccessListener(snapshots -> {
                     messageList.clear();
-                    // Process each document in the snapshot result
-                    snapshots.forEach(this::parseAndAddMessage);
+                    snapshots.forEach(this::processDownloadedDocument);
                     messageAdapter.updateMessages(messageList);
-                    scrollToBottom();
-                    Log.d("FIREBASE", "Loaded " + messageList.size() + " messages");
+                    scrollToLastMessage();
                 })
-                .addOnFailureListener(e -> {
+                .addOnFailureListener(error -> {
                     Toast.makeText(this, "Failed to load messages", Toast.LENGTH_SHORT).show();
-                    Log.e("FIREBASE", "Error loading messages", e);
                 });
     }
 
-    // Attaches a snapshot listener to the database to receive real-time updates when new messages are added.
+    // This function is responsible for listening to new messages being added to the database.
     // Input: None.
     // Output: None.
-    private void setupRealtimeListener() {
-        messageListener = getMessagesQuery()
+    private void startRealtimeUpdates() {
+        chatListener = createMessageQuery()
                 .addSnapshotListener((snapshots, error) -> {
-                    if (error != null) {
-                        Log.e("FIREBASE", "Listen failed", error);
-                        return;
-                    }
-
+                    if (error != null) return;
                     if (snapshots == null) return;
 
-                    // Filter specifically for "ADDED" changes to ignore modified or deleted documents
                     snapshots.getDocumentChanges().stream()
-                            .filter(dc -> dc.getType() == DocumentChange.Type.ADDED)
-                            .forEach(this::handleNewMessage);
+                            .filter(change -> change.getType() == DocumentChange.Type.ADDED)
+                            .forEach(this::handleAddedMessage);
                 });
     }
 
-    // Processes a new document change by converting it into a Message object and adding it to the list if it's unique.
-    // Input: DocumentChange dc (the change detected in the database).
+    // This function is responsible for adding a newly detected message to the chat screen.
+    // Input: DocumentChange change (the detected item).
     // Output: None.
-    private void handleNewMessage(DocumentChange dc) {
-        Message message = parseMessage(dc.getDocument());
-        if (message == null) return;
+    private void handleAddedMessage(DocumentChange change) {
+        Message newMessage = parseDocumentToMessage(change.getDocument());
+        if (newMessage == null) return;
 
-        // Prevent duplicate messages from appearing if loadMessages and setupRealtimeListener overlap
-        if (!messageExists(message)) {
-            messageAdapter.addMessage(message);
-            scrollToBottom();
+        if (!isMessageAlreadyInList(newMessage)) {
+            messageAdapter.addMessage(newMessage);
+            scrollToLastMessage();
         }
     }
 
-    // Converts a single Firestore document snapshot into a Message object and adds it to the message list.
-    // Input: QueryDocumentSnapshot document (the raw database document).
+    // This function is responsible for adding a generic document to the internal list.
+    // Input: QueryDocumentSnapshot document.
     // Output: None.
-    private void parseAndAddMessage(QueryDocumentSnapshot document) {
-        Message message = parseMessage(document);
+    private void processDownloadedDocument(QueryDocumentSnapshot document) {
+        Message message = parseDocumentToMessage(document);
         if (message != null) {
             messageList.add(message);
         }
     }
 
-    // Maps the fields from a Firestore document into a Message class instance.
-    // Input: QueryDocumentSnapshot document (the raw database document).
-    // Output: Message (the parsed message object, or null if fields are missing).
-    private Message parseMessage(QueryDocumentSnapshot document) {
+    // This function is responsible for converting raw database data into a Message object.
+    // Input: QueryDocumentSnapshot document (raw data).
+    // Output: Message (the converted object).
+    private Message parseDocumentToMessage(QueryDocumentSnapshot document) {
         try {
             String sender = document.getString("sender");
             String content = document.getString("content");
-            String fileType = document.getString("fileType");
-            Long timestamp = document.getLong("timestamp");
+            String type = document.getString("fileType");
+            Long time = document.getLong("timestamp");
 
-            // Verify that all required fields exist to prevent NullPointerExceptions later
-            if (sender == null || content == null || fileType == null || timestamp == null) {
+            if (sender == null || content == null || type == null || time == null) {
                 return null;
             }
 
-            return new Message(sender, content, fileType, timestamp);
-        } catch (Exception e) {
-            Log.e("FIREBASE", "Error parsing message", e);
+            return new Message(sender, content, type, time);
+        } catch (Exception error) {
             return null;
         }
     }
 
-    // Checks if a message already exists in the current list by comparing the timestamp and sender.
-    // Input: Message message (the message to check).
-    // Output: boolean (true if it exists, false otherwise).
-    private boolean messageExists(Message message) {
-        // Uses stream API to check if any message in the list has the same unique signature
+    // This function is responsible for verifying if a message is already being displayed.
+    // Input: Message target.
+    // Output: boolean (true if existing).
+    private boolean isMessageAlreadyInList(Message target) {
         return messageList.stream()
-                .anyMatch(m -> m.getTimestamp() == message.getTimestamp()
-                        && m.getSender().equals(message.getSender()));
+                .anyMatch(msg -> msg.getTimestamp() == target.getTimestamp()
+                        && msg.getSender().equals(target.getSender()));
     }
 
-    // Creates a Firestore query to get messages for the specific group, sorted by their creation time.
+    // This function is responsible for defining the sorting and location of the messages in Firestore.
     // Input: None.
-    // Output: Query (the configured Firestore query).
-    private Query getMessagesQuery() {
-        return db.collection("groups")
+    // Output: Query (the database query).
+    private Query createMessageQuery() {
+        return database.collection("groups")
                 .document(String.valueOf(groupId))
                 .collection("messages")
                 .orderBy("timestamp", Query.Direction.ASCENDING);
     }
 
-    // Validates input text and uses the Message structure class to upload a new message to the database.
+    // This function is responsible for taking user input and saving it as a new message in Firestore.
     // Input: None.
     // Output: None.
-    private void sendMessage() {
-        String messageText = etMessageInput.getText().toString().trim();
+    private void sendNewMessage() {
+        String outgoingText = messageInput.getText().toString().trim();
 
-        if (messageText.isEmpty()) {
+        if (outgoingText.isEmpty()) {
             Toast.makeText(this, "Please enter a message", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Static helper method in Message class to handle the Firebase write operation
-        Message.sendMessageToGroup(groupId, currentUsername, messageText, "text", this);
-        etMessageInput.setText("");
+        Message.sendMessageToGroup(groupId, currentUsername, outgoingText, "text", this);
+        messageInput.setText("");
     }
 
-    // Smoothly scrolls the RecyclerView to the last item so the user sees the most recent message.
+    // This function is responsible for moving the chat view to the most recent message.
     // Input: None.
     // Output: None.
-    private void scrollToBottom() {
+    private void scrollToLastMessage() {
         if (messageAdapter.getItemCount() > 0) {
-            recyclerViewMessages.smoothScrollToPosition(messageAdapter.getItemCount() - 1);
+            messagesRecyclerView.smoothScrollToPosition(messageAdapter.getItemCount() - 1);
         }
     }
 
-    // Cleans up the real-time database listener when the activity is destroyed to prevent memory leaks.
+    // This function is responsible for stopping the chat listener when the user leaves the screen.
     // Input: None.
     // Output: None.
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Detach the listener so it doesn't continue running in the background
-        if (messageListener != null) {
-            messageListener.remove();
+        if (chatListener != null) {
+            chatListener.remove();
         }
     }
 }

@@ -13,53 +13,61 @@ import com.example.chatit.Struct_Classes.User;
 
 public class LoginActivity extends AppCompatActivity {
 
-    // The variables from the layout file
-    private EditText etUsername, etPassword;
-    public Button btnLogin;
-    public TextView registerLink;
+    private EditText usernameInputField, passwordInputField;
+    private Button loginActionButton;
+    private TextView registrationLink;
 
+    // This function is responsible for setting up the login screen and its interactions.
+    // Input: Bundle savedInstanceState (the saved state of the activity).
+    // Output: None.
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
-        // Initiate layout instance
         super.onCreate(savedInstanceState);
         setContentView(R.layout.login_view);
 
-        // Find the user input variables in the .xml file
-        etUsername = findViewById(R.id.usernameInput);
-        etPassword = findViewById(R.id.passwordInput);
-        btnLogin = findViewById(R.id.loginButton);
-        registerLink = findViewById(R.id.registerLink);
-
-
-        // When the user Tries to register (Presses the button)
-        btnLogin.setOnClickListener(v -> handleLogin());
-        registerLink.setOnClickListener(v -> navigateToRegister());
+        initializeWidgets();
+        setupInteractionListeners();
     }
 
-    private void navigateToRegister() {
-        Intent intent = new Intent(this, RegisterActivity.class);
-        this.startActivity(intent);
-        this.finish();
+    // This function is responsible for connecting the Java variables to the XML layout components.
+    // Input: None.
+    // Output: None.
+    private void initializeWidgets() {
+        usernameInputField = findViewById(R.id.usernameInput);
+        passwordInputField = findViewById(R.id.passwordInput);
+        loginActionButton = findViewById(R.id.loginButton);
+        registrationLink = findViewById(R.id.registerLink);
     }
 
-    // This function is in charge of handling the user login.
-    // It is activated after the user tried to login using the button.
-    // Input: None
-    // Output: Void
-    private void handleLogin() {
+    // This function is responsible for defining what happens when the login button or register link is clicked.
+    // Input: None.
+    // Output: None.
+    private void setupInteractionListeners() {
+        loginActionButton.setOnClickListener(v -> performLoginSequence());
+        registrationLink.setOnClickListener(v -> jumpToRegistrationScreen());
+    }
 
-        // Get the data from the .xml file view
-        String username = etUsername.getText().toString().trim();
-        String password = etPassword.getText().toString().trim();
+    // This function is responsible for closing the login activity and opening the registration activity.
+    // Input: None.
+    // Output: None.
+    private void jumpToRegistrationScreen() {
+        Intent registrationIntent = new Intent(this, RegisterActivity.class);
+        startActivity(registrationIntent);
+        finish();
+    }
 
-        // If any of the variables are empty notify user of the error
-        if (username.isEmpty() || password.isEmpty()) {
+    // This function is responsible for validating the user input and attempting a login through Firestore.
+    // Input: None.
+    // Output: None.
+    private void performLoginSequence() {
+        String inputUsername = usernameInputField.getText().toString().trim();
+        String inputPassword = passwordInputField.getText().toString().trim();
+
+        if (inputUsername.isEmpty() || inputPassword.isEmpty()) {
             Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Log in the user using the "loginUser" function
-        User.loginUser(username, password, this);
+        User.loginUser(inputUsername, inputPassword, this);
     }
 }

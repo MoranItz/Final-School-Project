@@ -11,7 +11,7 @@ import com.example.chatit.R;
 
 public class SettingsActivity extends AppCompatActivity {
 
-    // Initializes the settings screen and sets up button listeners.
+    // This function is responsible for creating the settings activity and initializing the layout.
     // Input: Bundle savedInstanceState (the saved state of the activity).
     // Output: None.
     @Override
@@ -19,26 +19,26 @@ public class SettingsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.settings_view);
 
-        setupClickListeners();
+        initializeActionListeners();
     }
 
-    // Sets up click listeners for the back button and logout button.
+    // This function is responsible for setting up actions for the back and logout buttons.
     // Input: None.
     // Output: None.
-    private void setupClickListeners() {
-        ImageView backBtn = findViewById(R.id.backBtn);
-        backBtn.setOnClickListener(v -> finish());
+    private void initializeActionListeners() {
+        ImageView backActionButton = findViewById(R.id.backBtn);
+        backActionButton.setOnClickListener(v -> finish());
 
-        AppCompatButton logoutBtn = findViewById(R.id.logoutBtn);
-        logoutBtn.setOnClickListener(v -> logout());
+        AppCompatButton logoutActionButton = findViewById(R.id.logoutBtn);
+        logoutActionButton.setOnClickListener(v -> performUserLogout());
     }
 
-    // Logs the user out by clearing the login status and returning to the introduction screen.
+    // This function is responsible for clearing the user's login session and returning to the intro screen.
     // Input: None.
     // Output: None.
-    private void logout() {
-        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
-        prefs.edit().putBoolean("isLoggedIn", false).apply();
+    private void performUserLogout() {
+        SharedPreferences preferences = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        preferences.edit().putBoolean("isLoggedIn", false).apply();
 
         startActivity(new Intent(this, IntroductionActivity.class));
         finish();

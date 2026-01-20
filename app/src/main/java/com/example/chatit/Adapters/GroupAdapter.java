@@ -15,100 +15,91 @@ import java.util.List;
 
 public class GroupAdapter extends RecyclerView.Adapter<GroupAdapter.GroupViewHolder> {
 
-    private List<Group> groups;
-    private final OnGroupClickListener listener;
+    private List<Group> groupList;
+    private final OnGroupClickListener interactionListener;
 
-    // Interface used to handle click events on specific group items within the list.
+    // This interface is responsible for defining the click behavior when a group is selected.
     public interface OnGroupClickListener {
         void onGroupClick(Group group);
     }
 
-    // Constructor that initializes the adapter with a list of groups and a click listener.
-    // Input: List<Group> groups (the data source), OnGroupClickListener listener (the click handler).
+    // This function is responsible for creating the adapter with a list of groups and a click listener.
+    // Input: List<Group> groups, OnGroupClickListener listener.
     // Output: None.
     public GroupAdapter(List<Group> groups, OnGroupClickListener listener) {
-        this.groups = groups;
-        this.listener = listener;
+        this.groupList = groups;
+        this.interactionListener = listener;
     }
 
-    // Creates a new ViewHolder by inflating the group item layout.
-    // Input: ViewGroup parent (the RecyclerView), int viewType (the type of the view).
-    // Output: GroupViewHolder (the newly created holder).
+    // This function is responsible for inflating the XML layout for each group row.
+    // Input: ViewGroup parent, int viewType.
+    // Output: GroupViewHolder (the container for the row views).
     @NonNull
     @Override
     public GroupViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        // Inflates the individual group item XML layout into a View object
-        // Use groupbox_item instead of item_group
-        return new GroupViewHolder(LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.groupbox_item, parent, false));
+        View rowView = LayoutInflater.from(parent.getContext()).inflate(R.layout.groupbox_item, parent, false);
+        return new GroupViewHolder(rowView);
     }
 
-    // Binds the group data at a specific position to the provided ViewHolder.
-    // Input: GroupViewHolder holder (the holder to update), int pos (position in the list).
+    // This function is responsible for connecting group data to the views in a specific row.
+    // Input: GroupViewHolder holder, int position.
     // Output: None.
     @Override
-    public void onBindViewHolder(@NonNull GroupViewHolder holder, int pos) {
-        holder.bind(groups.get(pos), listener);
+    public void onBindViewHolder(@NonNull GroupViewHolder holder, int position) {
+        holder.bindData(groupList.get(position), interactionListener);
     }
 
-    // Returns the total number of items currently in the group list.
+    // This function is responsible for returning the total count of groups to be displayed.
     // Input: None.
-    // Output: int (the size of the groups list).
+    // Output: int (the number of groups).
     @Override
-    public int getItemCount() { return groups.size(); }
+    public int getItemCount() { return groupList.size(); }
 
-    // Inner class that holds references to the views for each group item in the list.
+    // This class is responsible for holding property references to the UI parts of a group row.
     static class GroupViewHolder extends RecyclerView.ViewHolder {
-        TextView name, lastMessage, time;
-        ImageView pfp;
+        TextView groupNameText, groupDescriptionText, groupTimeText;
+        ImageView groupProfileImageView;
 
-        // Constructor that finds and initializes the sub-views within the group item layout.
-        // Input: View v (the root view of the item layout).
+        // This function is responsible for finding the UI elements within the row view.
+        // Input: View itemView.
         // Output: None.
-        GroupViewHolder(@NonNull View v) {
-            super(v);
-            name = v.findViewById(R.id.groupName);
-            lastMessage = v.findViewById(R.id.lastMessage);
-            time = v.findViewById(R.id.groupTime);
-            pfp = v.findViewById(R.id.groupProfileImage);
+        GroupViewHolder(@NonNull View itemView) {
+            super(itemView);
+            groupNameText = itemView.findViewById(R.id.groupName);
+            groupDescriptionText = itemView.findViewById(R.id.lastMessage);
+            groupTimeText = itemView.findViewById(R.id.groupTime);
+            groupProfileImageView = itemView.findViewById(R.id.groupProfileImage);
         }
 
-        // Sets the text for the group details and handles the logic for the pluralization of the member count.
-        // Input: Group group (the group data), OnGroupClickListener listener (the click callback).
+        // This function is responsible for filling the row views with specific group information.
+        // Input: Group group, OnGroupClickListener listener.
         // Output: None.
-        void bind(Group group, OnGroupClickListener listener) {
-            name.setText(group.getGroupName());
-            
-            // Map description to lastMessage for now since old logic used description
-            lastMessage.setText(group.getDescription());
-            
-            // Set time to empty or default as it is not in old logic
-            time.setText(""); 
+        void bindData(Group group, OnGroupClickListener listener) {
+            groupNameText.setText(group.getGroupName());
+            groupDescriptionText.setText(group.getDescription());
+            groupTimeText.setText(""); 
 
-            // Set group profile picture
-            String imageBase64 = group.getImageBase64();
-            if (imageBase64 != null && !imageBase64.isEmpty()) {
-                Bitmap bitmap = ImageUtils.convertBase64ToBitmap(imageBase64);
-                if (bitmap != null) {
-                    pfp.setImageBitmap(bitmap);
+            String base64Image = group.getImageBase64();
+            if (base64Image != null && !base64Image.isEmpty()) {
+                Bitmap decodedBitmap = ImageUtils.convertBase64ToBitmap(base64Image);
+                if (decodedBitmap != null) {
+                    groupProfileImageView.setImageBitmap(decodedBitmap);
                 } else {
-                    pfp.setImageResource(R.drawable.creategroup_icon);
+                    groupProfileImageView.setImageResource(R.drawable.creategroup_icon);
                 }
             } else {
-                pfp.setImageResource(R.drawable.creategroup_icon);
+                groupProfileImageView.setImageResource(R.drawable.creategroup_icon);
             }
 
-            // Attach the listener to the entire row so the group chat opens when clicked
             itemView.setOnClickListener(v -> listener.onGroupClick(group));
         }
     }
 
-    // Updates the adapter's data source with a new list and refreshes the entire UI.
-    // Input: List<Group> newGroups (the updated list of groups).
+    // This function is responsible for swapping the current group list with a new one and refreshing the UI.
+    // Input: List<Group> newGroups.
     // Output: None.
     public void updateGroups(List<Group> newGroups) {
-        this.groups = newGroups;
-        // Forces the RecyclerView to redraw all visible items with the new data
+        this.groupList = newGroups;
         notifyDataSetChanged();
     }
 }

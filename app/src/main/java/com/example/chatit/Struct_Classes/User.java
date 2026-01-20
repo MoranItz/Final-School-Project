@@ -37,71 +37,62 @@ public class User {
     public void setProfilePicture(String profilePicture) { this.profilePicture = profilePicture; }
 
 
-
-    // Checks if a username is available in the Firestore database and creates a new user document if the name is not taken.
-    // Input: User user (the new user data), Activity context (the registration activity).
+    // This function is responsible for checking if a name is taken and adding a new user to Firestore.
+    // Input: User newlyCreatedUser, Activity context.
     // Output: None.
-    public static void registerUser(User user, Activity context) {
-        // Create a reference to the document using the username as the unique identifier
-        DocumentReference ref = FirebaseFirestore.getInstance().collection("users").document(user.getUsername());
+    public static void registerUser(User newlyCreatedUser, Activity context) {
+        DocumentReference userReference = FirebaseFirestore.getInstance().collection("users").document(newlyCreatedUser.getUsername());
 
-        ref.get().addOnCompleteListener(task -> {
-            if (!task.isSuccessful()) {
-                Log.e("FIREBASE", "Check failed: ", task.getException());
-                return;
-            }
-            // Prevent duplicate accounts by verifying the document does not already exist
+        userReference.get().addOnCompleteListener(task -> {
+            if (!task.isSuccessful()) return;
+            
             if (task.getResult().exists()) {
-                Toast.makeText(context, "Username '" + user.getUsername() + "' taken!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, "Username taken!", Toast.LENGTH_SHORT).show();
                 return;
             }
-            // Save the user object to the database upon successful validation
-            ref.set(user).addOnSuccessListener(aVoid -> {
-                saveUserAndNavigate(user.getUsername(), user.getEmail(), user.getPassword(), context);
-            }).addOnFailureListener(e -> Log.e("FIREBASE", "Error saving user", e));
+            
+            userReference.set(newlyCreatedUser).addOnSuccessListener(aVoid -> {
+                saveUserDataRemotely(newlyCreatedUser.getUsername(), newlyCreatedUser.getEmail(), newlyCreatedUser.getPassword(), context);
+            });
         });
     }
 
-    // Verifies the user's credentials against the Firestore database and logs them into the application if they match.
-    // Input: String username (input name), String password (input password), Activity context (the login activity).
+    // This function is responsible for verifying the username and password in Firestore.
+    // Input: String inputName, String inputPassword, Activity context.
     // Output: None.
-    public static void loginUser(String username, String password, Activity context) {
-        FirebaseFirestore.getInstance().collection("users").document(username).get().addOnCompleteListener(task -> {
+    public static void loginUser(String inputName, String inputPassword, Activity context) {
+        FirebaseFirestore.getInstance().collection("users").document(inputName).get().addOnCompleteListener(task -> {
             if (!task.isSuccessful()) {
                 Toast.makeText(context, "Login failed!", Toast.LENGTH_SHORT).show();
                 return;
             }
-            DocumentSnapshot doc = task.getResult();
-            // Validate that the user exists in the database
-            if (!doc.exists()) {
+            DocumentSnapshot document = task.getResult();
+            if (!document.exists()) {
                 Toast.makeText(context, "User doesn't exist!", Toast.LENGTH_SHORT).show();
                 return;
             }
-            // Check if the stored password matches the user's input
-            if (!password.equals(doc.getString("password"))) {
+            if (!inputPassword.equals(document.getString("password"))) {
                 Toast.makeText(context, "Wrong password!", Toast.LENGTH_SHORT).show();
                 return;
             }
-            saveUserAndNavigate(username, doc.getString("email"), password, context);
+            saveUserDataRemotely(inputName, document.getString("email"), inputPassword, context);
         });
     }
 
-    // Stores the user's details in SharedPreferences for session persistence and redirects the user to the Home screen.
-    // Input: String user (username), String email (user email), String pass (user password), Activity context (current activity).
+    // This function is responsible for saving user credentials locally and moving to the home screen.
+    // Input: String name, String email, String password, Activity context.
     // Output: None.
-    private static void saveUserAndNavigate(String user, String email, String pass, Activity context) {
-        SharedPreferences.Editor editor = context.getSharedPreferences("UserPrefs", Context.MODE_PRIVATE).edit();
-        // Update local session flags and credentials
-        editor.putString("username", user);
-        editor.putString("email", email);
-        editor.putString("password", pass);
-        editor.putBoolean("isLoggedIn", true);
-        editor.apply();
+    private static void saveUserDataRemotely(String name, String email, String password, Activity context) {
+        SharedPreferences.Editor preferencesEditor = context.getSharedPreferences("UserPrefs", Context.MODE_PRIVATE).edit();
+        preferencesEditor.putString("username", name);
+        preferencesEditor.putString("email", email);
+        preferencesEditor.putString("password", password);
+        preferencesEditor.putBoolean("isLoggedIn", true);
+        preferencesEditor.apply();
 
-        // Clear the activity stack so the user cannot return to the login/register screens via the back button
-        Intent intent = new Intent(context, HomeActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        context.startActivity(intent);
+        Intent homeIntent = new Intent(context, HomeActivity.class);
+        homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        context.startActivity(homeIntent);
         context.finish();
     }
 }

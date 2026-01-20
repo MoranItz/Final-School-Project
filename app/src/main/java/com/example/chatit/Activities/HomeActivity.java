@@ -30,35 +30,34 @@ import java.util.Vector;
 
 public class HomeActivity extends AppCompatActivity {
 
-    private RecyclerView recyclerViewGroups;
-    private TextView tvEmptyState;
+    private RecyclerView groupsRecyclerView;
+    private TextView emptyStateText;
     private GroupAdapter groupAdapter;
     private List<Group> groupList;
     private String currentUsername;
 
-    // Sets up the main screen of the application and coordinates the loading of user data if logged in.
+    // This function is responsible for creating the home screen and checking if the user is logged in.
     // Input: Bundle savedInstanceState (the saved state of the activity).
     // Output: None.
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // If the session is invalid, the activity stops here to prevent unauthorized access
-        if (!checkLoginStatus()) {
+        if (!isSessionValid()) {
             return;
         }
 
         setContentView(R.layout.home_view);
-        initData();
-        initViews();
-        loadUserGroups();
+        initializeData();
+        initializeViews();
+        loadGroupsFromFirestore();
     }
 
-    // Verifies the user's login state from local storage and redirects to the introduction screen if not logged in.
+    // This function is responsible for verifying if the user has an active login session.
     // Input: None.
-    // Output: boolean (true if logged in, false otherwise).
-    private boolean checkLoginStatus() {
-        if (isUserLoggedIn(this)) {
+    // Output: boolean (returns true if the user is logged in).
+    private boolean isSessionValid() {
+        if (checkLoginFlag(this)) {
             return true;
         }
 
@@ -67,206 +66,187 @@ public class HomeActivity extends AppCompatActivity {
         return false;
     }
 
-    // Retrieves the current user's username from SharedPreferences and prepares the group list container.
+    // This function is responsible for initializing the local data structures and getting the username.
     // Input: None.
     // Output: None.
-    private void initData() {
+    private void initializeData() {
         currentUsername = getSharedPreferences("UserPrefs", MODE_PRIVATE).getString("username", "");
         groupList = new ArrayList<>();
     }
 
-    // Connects layout views to variables and sets up the RecyclerView and button click listeners.
+    // This function is responsible for connecting properties to the XML layout and setting up listeners.
     // Input: None.
     // Output: None.
-    private void initViews() {
-        // Direct listener to open the group creation screen
-        FloatingActionButton createGroupFab = findViewById(R.id.createGroupFab);
-        createGroupFab.setOnClickListener(v ->
+    private void initializeViews() {
+        FloatingActionButton createGroupButton = findViewById(R.id.createGroupFab);
+        createGroupButton.setOnClickListener(v ->
                 startActivity(new Intent(this, CreateGroupActivity.class)));
 
-        // Settings button opens an options menu
-        ImageView settingsBtn = findViewById(R.id.settingsBtn);
-        settingsBtn.setOnClickListener(this::showMenu);
+        ImageView settingsButton = findViewById(R.id.settingsBtn);
+        settingsButton.setOnClickListener(this::showPopupMenu);
 
-        tvEmptyState = findViewById(R.id.tvEmptyState);
-        recyclerViewGroups = findViewById(R.id.homeRecyclerView);
-        recyclerViewGroups.setLayoutManager(new LinearLayoutManager(this));
+        emptyStateText = findViewById(R.id.tvEmptyState);
+        groupsRecyclerView = findViewById(R.id.homeRecyclerView);
+        groupsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        groupAdapter = new GroupAdapter(groupList, this::onGroupClick);
-        recyclerViewGroups.setAdapter(groupAdapter);
+        groupAdapter = new GroupAdapter(groupList, this::onGroupItemClicked);
+        groupsRecyclerView.setAdapter(groupAdapter);
     }
 
-    // Refreshes the user's group list every time the user returns to this screen.
+    // This function is responsible for refreshing the group list whenever the user returns to the screen.
     // Input: None.
     // Output: None.
     @Override
     protected void onResume() {
         super.onResume();
-        loadUserGroups();
+        loadGroupsFromFirestore();
     }
 
-    // Fetches all group documents from Firestore and triggers the processing of each group.
+    // This function is responsible for fetching all groups from the database.
     // Input: None.
     // Output: None.
-    private void loadUserGroups() {
+    private void loadGroupsFromFirestore() {
         if (currentUsername.isEmpty()) return;
 
         FirebaseFirestore.getInstance().collection("groups").get()
                 .addOnSuccessListener(snapshots -> {
                     groupList.clear();
-                    // Iterate through every group in the database to filter for the user's membership
-                    for (QueryDocumentSnapshot doc : snapshots) {
-                        processGroupDocument(doc);
+                    for (QueryDocumentSnapshot document : snapshots) {
+                        handleGroupDocument(document);
                     }
-                    updateUI();
+                    refreshInterface();
                 })
-                .addOnFailureListener(e -> Log.e("FIREBASE", "Error loading groups", e));
+                .addOnFailureListener(error -> Log.e("FIREBASE", "Error loading groups", error));
     }
 
-    // Handles the complex data extraction for a single group document and adds it to the list if the user is a member.
-    // Input: QueryDocumentSnapshot doc (the raw database document).
+    // This function is responsible for checking if a specific group document should be shown to the user.
+    // Input: QueryDocumentSnapshot document.
     // Output: None.
-    private void processGroupDocument(QueryDocumentSnapshot doc) {
+    private void handleGroupDocument(QueryDocumentSnapshot document) {
         try {
-            // Firestore stores the member list as an array of objects/maps
-            List<Object> membersList = (List<Object>) doc.get("members");
-            if (membersList == null) {
-                return;
-            }
+            List<Object> memberDataList = (List<Object>) document.get("members");
+            if (memberDataList == null) return;
 
-            Vector<User> members = parseMembers(membersList);
-            // Only add the group to the home screen if the current user is actually in it
-            if (!isUserInGroup(members)) {
-                return;
-            }
+            Vector<User> memberObjects = parseMemberData(memberDataList);
+            if (!isCurrentUserInMemberList(memberObjects)) return;
 
-            groupList.add(createGroupFromDoc(doc, members));
-        } catch (Exception e) {
-            Log.e("FIREBASE", "Error parsing group", e);
+            groupList.add(convertDocumentToGroupObject(document, memberObjects));
+        } catch (Exception error) {
+            Log.e("FIREBASE", "Error processing group", error);
         }
     }
 
-    // Converts a list of raw objects from Firestore into a typed Vector of User objects.
-    // Input: List<Object> membersList (the raw list from the database).
-    // Output: Vector<User> (the parsed user objects).
-    private Vector<User> parseMembers(List<Object> membersList) {
-        Vector<User> members = new Vector<>();
-        for (Object obj : membersList) {
-            if (!(obj instanceof Map)) continue;
+    // This function is responsible for turning raw database member data into User objects.
+    // Input: List<Object> memberData.
+    // Output: Vector<User> (list of users).
+    private Vector<User> parseMemberData(List<Object> memberData) {
+        Vector<User> users = new Vector<>();
+        for (Object item : memberData) {
+            if (!(item instanceof Map)) continue;
 
-            // Cast the raw object to a Map to access the user data keys
-            Map<String, Object> map = (Map<String, Object>) obj;
-            members.add(new User(
-                    (String) map.get("username"),
-                    (String) map.get("password"),
-                    (String) map.get("email")
+            Map<String, Object> data = (Map<String, Object>) item;
+            users.add(new User(
+                    (String) data.get("username"),
+                    (String) data.get("password"),
+                    (String) data.get("email")
             ));
         }
-        return members;
+        return users;
     }
 
-    // Checks if the current username exists within a given vector of group members.
-    // Input: Vector<User> members (the members to check).
-    // Output: boolean (true if the user is a member, false otherwise).
-    private boolean isUserInGroup(Vector<User> members) {
-        for (User m : members) {
-            if (m.getUsername().equals(currentUsername)) return true;
+    // This function is responsible for checking if the current user belongs to a list of members.
+    // Input: Vector<User> members.
+    // Output: boolean (true if user is in list).
+    private boolean isCurrentUserInMemberList(Vector<User> members) {
+        for (User user : members) {
+            if (user.getUsername().equals(currentUsername)) return true;
         }
         return false;
     }
 
-    // Constructs a Group object using data from a Firestore document and a pre-parsed list of members.
-    // Input: QueryDocumentSnapshot doc (database document), Vector<User> members (pre-parsed members).
-    // Output: Group (the finalized Group instance).
-    private Group createGroupFromDoc(QueryDocumentSnapshot doc, Vector<User> members) {
-        String owner = doc.getString("owner");
-        Group g = new Group(
-                doc.getLong("groupId").intValue(),
-                doc.getString("groupName"),
-                owner,
-                doc.getString("description"),
+    // This function is responsible for creating a Group object from a Firestore document.
+    // Input: QueryDocumentSnapshot document, Vector<User> members.
+    // Output: Group (the finalized object).
+    private Group convertDocumentToGroupObject(QueryDocumentSnapshot document, Vector<User> members) {
+        String ownerName = document.getString("owner");
+        Group group = new Group(
+                document.getLong("groupId").intValue(),
+                document.getString("groupName"),
+                ownerName,
+                document.getString("description"),
                 new Vector<>(),
-                new User(owner, "", "")
+                new User(ownerName, "", "")
         );
-        g.setMembers(members);
-        g.setImageBase64(doc.getString("imageBase64"));
-        return g;
+        group.setMembers(members);
+        group.setImageBase64(document.getString("imageBase64"));
+        return group;
     }
 
-    // Updates the visibility of the list and empty state text based on whether groups were found.
+    // This function is responsible for updating the visibility of the group list and the empty message.
     // Input: None.
     // Output: None.
-    private void updateUI() {
+    private void refreshInterface() {
         groupAdapter.updateGroups(groupList);
-        boolean isEmpty = groupList.isEmpty();
-        // Toggle empty state message if the user has no groups
-        tvEmptyState.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
-        recyclerViewGroups.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
+        boolean listIsEmpty = groupList.isEmpty();
+        
+        emptyStateText.setVisibility(listIsEmpty ? View.VISIBLE : View.GONE);
+        groupsRecyclerView.setVisibility(listIsEmpty ? View.GONE : View.VISIBLE);
     }
 
-    // Navigates to the group chat screen for the selected group.
-    // Input: Group group (the group that was clicked).
+    // This function is responsible for opening the chat screen when a group is clicked.
+    // Input: Group selectedGroup.
     // Output: None.
-    private void onGroupClick(Group group) {
+    private void onGroupItemClicked(Group selectedGroup) {
         Intent intent = new Intent(this, GroupChatActivity.class);
-        // Pass group identifiers to the chat activity
-        intent.putExtra("groupId", group.getGroupId());
-        intent.putExtra("groupName", group.getGroupName());
+        intent.putExtra("groupId", selectedGroup.getGroupId());
+        intent.putExtra("groupName", selectedGroup.getGroupName());
         startActivity(intent);
     }
 
-    // Displays a popup menu at the settings button location with options for Profile and Settings.
-    // Input: View v (the view that was clicked to trigger the menu).
+    // This function is responsible for showing the settings menu with Profile and Settings options.
+    // Input: View anchorView (the button that was clicked).
     // Output: None.
-    private void showMenu(View v) {
-        // Use a themed context to apply the custom style with rounded corners and dark background
-        Context wrapper = new ContextThemeWrapper(this, R.style.CustomPopupMenu);
-        PopupMenu popup = new PopupMenu(wrapper, v);
-        popup.getMenuInflater().inflate(R.menu.home_menu, popup.getMenu());
+    private void showPopupMenu(View anchorView) {
+        Context themeContext = new ContextThemeWrapper(this, R.style.CustomPopupMenu);
+        PopupMenu menu = new PopupMenu(themeContext, anchorView);
+        menu.getMenuInflater().inflate(R.menu.home_menu, menu.getMenu());
 
-        // Try to force show icons using reflection for a premium look
         try {
-            Field[] fields = popup.getClass().getDeclaredFields();
-            for (Field field : fields) {
-                if ("mPopup".equals(field.getName())) {
-                    field.setAccessible(true);
-                    Object menuPopupHelper = field.get(popup);
-                    Class<?> classPopupHelper = Class.forName(menuPopupHelper.getClass().getName());
-                    Method setForceIcons = classPopupHelper.getMethod("setForceShowIcon", boolean.class);
-                    setForceIcons.invoke(menuPopupHelper, true);
-                    break;
-                }
-            }
-        } catch (Exception e) {
-            Log.e("MENU", "Could not force icons", e);
+            Field fieldMenuPopup = menu.getClass().getDeclaredField("mPopup");
+            fieldMenuPopup.setAccessible(true);
+            Object menuPopupHelper = fieldMenuPopup.get(menu);
+            Class<?> classPopupHelper = Class.forName(menuPopupHelper.getClass().getName());
+            Method setForceShowIcon = classPopupHelper.getMethod("setForceShowIcon", boolean.class);
+            setForceShowIcon.invoke(menuPopupHelper, true);
+        } catch (Exception error) {
+            Log.e("MENU", "Error displaying icons", error);
         }
 
-        popup.setOnMenuItemClickListener(item -> {
-            int id = item.getItemId();
-            if (id == R.id.menu_profile) {
-                startActivity(new Intent(this, com.example.chatit.Activities.ProfileActivity.class));
-            } else if (id == R.id.menu_settings) {
-                startActivity(new Intent(this, com.example.chatit.Activities.SettingsActivity.class));
+        menu.setOnMenuItemClickListener(item -> {
+            int itemId = item.getItemId();
+            if (itemId == R.id.menu_profile) {
+                startActivity(new Intent(this, ProfileActivity.class));
+            } else if (itemId == R.id.menu_settings) {
+                startActivity(new Intent(this, SettingsActivity.class));
             }
             return true;
         });
-        popup.show();
+        menu.show();
     }
 
-    // Clears the user's logged-in status in preferences and returns to the introduction activity.
+    // This function is responsible for logging the user out and returning to the introduction activity.
     // Input: None.
     // Output: None.
-    private void userLogout() {
-        // Update local storage to reflect that the user has logged out
+    private void logoutUser() {
         getSharedPreferences("UserPrefs", MODE_PRIVATE).edit().putBoolean("isLoggedIn", false).apply();
         startActivity(new Intent(this, IntroductionActivity.class));
         finish();
     }
 
-    // Checks the local shared preferences to see if the login flag is set to true.
-    // Input: Context context (the application context).
-    // Output: boolean (true if the "isLoggedIn" flag is true).
-    public boolean isUserLoggedIn(Context context) {
+    // This function is responsible for checking the login flag in shared preferences.
+    // Input: Context context.
+    // Output: boolean (true if logged in).
+    public boolean checkLoginFlag(Context context) {
         return context.getSharedPreferences("UserPrefs", MODE_PRIVATE).getBoolean("isLoggedIn", false);
     }
 }

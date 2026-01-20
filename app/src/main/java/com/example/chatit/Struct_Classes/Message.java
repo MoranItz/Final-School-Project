@@ -26,50 +26,44 @@ public class Message {
     public long getTimestamp() { return timestamp; }
 
 
-
-    // Encrypts the message content and uploads a new message object to a specific group's message sub-collection in Firestore.
-    // Input: int groupId (target group ID), String sender (sender username), String content (raw message), String fileType (e.g., "text"), Activity context (UI context).
+    // This function is responsible for encrypting a message and uploading it to a specific group chat.
+    // Input: int groupId, String sender, String content, String fileType, Activity context.
     // Output: None.
     public static void sendMessageToGroup(int groupId, String sender, String content, String fileType, Activity context) {
-        // Create a message instance with the current system time as the timestamp
-        Message msg = new Message(sender, base64Encryption(content), fileType, System.currentTimeMillis());
+        Message newMessage = new Message(sender, base64Encryption(content), fileType, System.currentTimeMillis());
 
-        // Navigate through the Firestore path: groups -> {id} -> messages -> [new random document]
         FirebaseFirestore.getInstance().collection("groups")
                 .document(String.valueOf(groupId))
                 .collection("messages")
-                .add(msg)
-                .addOnSuccessListener(ref -> Log.d("FIREBASE", "Sent: " + ref.getId()))
-                .addOnFailureListener(e -> Toast.makeText(context, "Failed to send", Toast.LENGTH_SHORT).show());
+                .add(newMessage)
+                .addOnSuccessListener(reference -> Log.d("FIREBASE", "Sent: " + reference.getId()))
+                .addOnFailureListener(error -> Toast.makeText(context, "Failed to send", Toast.LENGTH_SHORT).show());
     }
 
-    // Removes a specific message document from the database based on the group ID and the message's unique document ID.
-    // Input: int groupId (the ID of the group), String msgId (the Firestore document ID of the message), Activity context (UI context).
+    // This function is responsible for deleting a specific message from the database.
+    // Input: int groupId, String messageId, Activity context.
     // Output: None.
-    public static void deleteMessage(int groupId, String msgId, Activity context) {
-        // Accesses the specific document reference and triggers the delete operation
+    public static void deleteMessage(int groupId, String messageId, Activity context) {
         FirebaseFirestore.getInstance().collection("groups")
                 .document(String.valueOf(groupId))
                 .collection("messages")
-                .document(msgId)
+                .document(messageId)
                 .delete()
                 .addOnSuccessListener(aVoid -> Toast.makeText(context, "Deleted", Toast.LENGTH_SHORT).show())
-                .addOnFailureListener(e -> Log.e("FIREBASE", "Delete failed", e));
+                .addOnFailureListener(error -> Log.e("FIREBASE", "Delete failed", error));
     }
 
-    // Converts a standard string into a Base64 encoded string for a simple layer of data obfuscation.
-    // Input: String content (the raw text).
-    // Output: String (the Base64 encoded result).
+    // This function is responsible for encoding message text into Base64 format.
+    // Input: String content.
+    // Output: String (encoded text).
     public static String base64Encryption(String content) {
-        // Check for null to avoid processing errors, then convert bytes to Base64 format
         return content == null ? null : Base64.encodeToString(content.getBytes(), Base64.DEFAULT);
     }
 
-    // Decodes a Base64 encoded string back into its original human-readable text format.
-    // Input: String content (the Base64 encoded text).
-    // Output: String (the decoded raw text).
+    // This function is responsible for decoding Base64 text back into normal readable text.
+    // Input: String content.
+    // Output: String (decoded text).
     public static String base64Decryption(String content) {
-        // Decodes the string back into bytes and initializes a new string object from those bytes
         return content == null ? null : new String(Base64.decode(content, Base64.DEFAULT));
     }
 }

@@ -21,7 +21,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-
 import com.example.chatit.R;
 import com.example.chatit.Struct_Classes.Group;
 import com.example.chatit.Struct_Classes.User;
@@ -36,54 +35,61 @@ import java.util.Vector;
 
 public class CreateGroupActivity extends AppCompatActivity {
 
-    private EditText etGroupName, etGroupDescription, etMemberSearch;
+    private EditText groupNameInput, groupDescriptionInput, memberSearchInput;
     private RecyclerView membersRecyclerView;
-    private Button btnCreate;
+    private Button createGroupButton;
     
-    private List<String> userList; // Search results
-    private Set<String> selectedUsernames; // Selected users
+    private List<String> userList;
+    private Set<String> selectedUsernames;
     private UserAdapter userAdapter;
     
-    private Vector<User> selectedMembersObjs;
-
+    private Vector<User> selectedMemberObjects;
     private String currentUsername;
 
+    // This function is responsible for creating the activity and setting up the UI and basic data.
+    // Input: Bundle savedInstanceState (the saved state of the activity).
+    // Output: None.
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.creategroup_view);
 
-        etGroupName = findViewById(R.id.groupNameInput);
-        etGroupDescription = findViewById(R.id.groupDescriptionInput);
-        etMemberSearch = findViewById(R.id.memberSearchInput);
+        groupNameInput = findViewById(R.id.groupNameInput);
+        groupDescriptionInput = findViewById(R.id.groupDescriptionInput);
+        memberSearchInput = findViewById(R.id.memberSearchInput);
         membersRecyclerView = findViewById(R.id.membersRecyclerView);
-        btnCreate = findViewById(R.id.createBtn);
+        createGroupButton = findViewById(R.id.createBtn);
 
         userList = new ArrayList<>();
         selectedUsernames = new HashSet<>();
-        selectedMembersObjs = new Vector<>();
-
+        selectedMemberObjects = new Vector<>();
         
-        SharedPreferences prefs = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE);
-        currentUsername = prefs.getString("username", "");
+        SharedPreferences preferences = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE);
+        currentUsername = preferences.getString("username", "");
 
         setupRecyclerView();
         setupSearch();
 
-        ImageView backBtn = findViewById(R.id.backBtn);
-        backBtn.setOnClickListener(v -> finish());
+        ImageView backButton = findViewById(R.id.backBtn);
+        backButton.setOnClickListener(v -> finish());
 
-        btnCreate.setOnClickListener(v -> finishGroupCreation());
+        createGroupButton.setOnClickListener(v -> finishGroupCreation());
     }
 
+    // This function is responsible for initializing the RecyclerView with the user adapter.
+    // Input: None.
+    // Output: None.
     private void setupRecyclerView() {
         userAdapter = new UserAdapter(userList, selectedUsernames);
         membersRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         membersRecyclerView.setAdapter(userAdapter);
     }
 
+    // This function is responsible for setting up the listener for the search input field.
+    // Input: None.
+    // Output: None.
     private void setupSearch() {
-        etMemberSearch.addTextChangedListener(new TextWatcher() {
+        memberSearchInput.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
@@ -102,11 +108,13 @@ public class CreateGroupActivity extends AppCompatActivity {
         });
     }
 
+    // This function is responsible for searching users in Firestore whose names start with the query.
+    // Input: String query (the text to search for).
+    // Output: None.
     private void searchUsers(String query) {
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        FirebaseFirestore database = FirebaseFirestore.getInstance();
         
-        // \uf8ff is a high-range Unicode character used to create a "starts with" range query in Firestore
-        db.collection("users")
+        database.collection("users")
                 .whereGreaterThanOrEqualTo("username", query)
                 .whereLessThanOrEqualTo("username", query + "\uf8ff")
                 .get()
@@ -114,10 +122,9 @@ public class CreateGroupActivity extends AppCompatActivity {
                     if (task.isSuccessful()) {
                         userList.clear();
                         for (DocumentSnapshot document : task.getResult()) {
-                            String username = document.getString("username");
-                            // Ensure the current logged-in user doesn't appear in their own search results
-                            if (username != null && !username.equals(currentUsername)) {
-                                userList.add(username);
+                            String name = document.getString("username");
+                            if (name != null && !name.equals(currentUsername)) {
+                                userList.add(name);
                             }
                         }
                         userAdapter.notifyDataSetChanged();
@@ -127,11 +134,14 @@ public class CreateGroupActivity extends AppCompatActivity {
                 });
     }
 
+    // This function is responsible for validating inputs and starting the group registration process.
+    // Input: None.
+    // Output: None.
     private void finishGroupCreation() {
-        String groupName = etGroupName.getText().toString().trim();
-        String groupDescription = etGroupDescription.getText().toString().trim();
+        String name = groupNameInput.getText().toString().trim();
+        String description = groupDescriptionInput.getText().toString().trim();
 
-        if (groupName.isEmpty()) {
+        if (name.isEmpty()) {
             Toast.makeText(this, "A new group must have a name", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -145,74 +155,78 @@ public class CreateGroupActivity extends AppCompatActivity {
             return;
         }
 
-        User currentUser = new User(currentUsername, currentPassword, currentEmail);
-
-        selectedMembersObjs.clear();
+        User ownerObject = new User(currentUsername, currentPassword, currentEmail);
+        selectedMemberObjects.clear();
         ArrayList<String> selectedList = new ArrayList<>(selectedUsernames);
 
         if (selectedList.isEmpty()) {
-            createGroup(currentUser, groupName, groupDescription);
+            createNewGroupEntry(ownerObject, name, description);
         } else {
-            fetchUsersAndCreateGroup(selectedList, 0, currentUser, groupName, groupDescription);
+            fetchMemberDetailsAndProceed(selectedList, 0, ownerObject, name, description);
         }
     }
 
-    private void fetchUsersAndCreateGroup(ArrayList<String> usernames, int index, User currentUser, String groupName, String groupDescription) {
+    // This function is responsible for fetching full member details from Firestore before creating the group.
+    // Input: ArrayList<String> usernames, int index, User owner, String name, String description.
+    // Output: None.
+    private void fetchMemberDetailsAndProceed(ArrayList<String> usernames, int index, User owner, String name, String description) {
         if (index >= usernames.size()) {
-            createGroup(currentUser, groupName, groupDescription);
+            createNewGroupEntry(owner, name, description);
             return;
         }
 
-        String username = usernames.get(index);
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        String targetName = usernames.get(index);
+        FirebaseFirestore database = FirebaseFirestore.getInstance();
         
-        db.collection("users").document(username).get().addOnSuccessListener(documentSnapshot -> {
-            if (documentSnapshot.exists())  {
-                String email = documentSnapshot.getString("email");
-                String password = documentSnapshot.getString("password");
-                selectedMembersObjs.add(new User(username, password, email));
+        database.collection("users").document(targetName).get().addOnSuccessListener(snapshot -> {
+            if (snapshot.exists())  {
+                String email = snapshot.getString("email");
+                String password = snapshot.getString("password");
+                selectedMemberObjects.add(new User(targetName, password, email));
             }
-            fetchUsersAndCreateGroup(usernames, index + 1, currentUser, groupName, groupDescription);
-        }).addOnFailureListener(e -> {
-            fetchUsersAndCreateGroup(usernames, index + 1, currentUser, groupName, groupDescription);
+            fetchMemberDetailsAndProceed(usernames, index + 1, owner, name, description);
+        }).addOnFailureListener(error -> {
+            fetchMemberDetailsAndProceed(usernames, index + 1, owner, name, description);
         });
     }
 
-    private void createGroup(User currentUser, String groupName, String groupDescription) {
-        getNewGroupId(id -> {
-            Group group = new Group(id, groupName, currentUser.getUsername(), groupDescription, selectedMembersObjs, currentUser);
-            Group.registerGroup(group, CreateGroupActivity.this);
+    // This function is responsible for generating a unique ID and registering the group in Firestore.
+    // Input: User owner, String name, String description.
+    // Output: None.
+    private void createNewGroupEntry(User owner, String name, String description) {
+        generateUniqueGroupId(uniqueId -> {
+            Group newGroup = new Group(uniqueId, name, owner.getUsername(), description, selectedMemberObjects, owner);
+            Group.registerGroup(newGroup, CreateGroupActivity.this);
         });
     }
 
-    private interface GroupIdCallback {
+    // This interface is responsible for returning the generated ID to the caller.
+    private interface GroupIdResultCallback {
         void onResult(int id);
     }
 
-    private void getNewGroupId(GroupIdCallback callback) {
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        // Generate a new random number between 10000 and 99999
-        int newId = (int)((Math.random() * 900000) + 100000);
+    // This function is responsible for generating a unique 6-digit ID for a new group.
+    // Input: GroupIdResultCallback callback (the function to call with the result).
+    // Output: None.
+    private void generateUniqueGroupId(GroupIdResultCallback callback) {
+        FirebaseFirestore database = FirebaseFirestore.getInstance();
+        int randomId = (int)((Math.random() * 900000) + 100000);
 
-        // Find if the generated Id exists anywhere
-        db.collection("groups").whereEqualTo("id", newId).get()
+        database.collection("groups").whereEqualTo("groupId", randomId).get()
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
-                        // If no equal id was found
                         if (task.getResult().isEmpty()) {
-                            callback.onResult(newId);
+                            callback.onResult(randomId);
                         } else {
-                            // Try with a new unique id
-                            getNewGroupId(callback);
+                            generateUniqueGroupId(callback);
                         }
                     } else {
-                        // If there was an error trying to connect to the firebase or finding the IDs
                         Log.e("FIREBASE", "Error checking for unique group ID", task.getException());
                     }
                 });
     }
 
-    // Inner Adapter Class
+    // This class is responsible for managing the display of searchable users in the creation screen.
     private static class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder> {
         private final List<String> users;
         private final Set<String> selected;
@@ -231,18 +245,17 @@ public class CreateGroupActivity extends AppCompatActivity {
 
         @Override
         public void onBindViewHolder(@NonNull UserViewHolder holder, int position) {
-            String username = users.get(position);
-            holder.bind(username, selected.contains(username));
+            String name = users.get(position);
+            holder.bind(name, selected.contains(name));
             
             holder.checkBox.setOnClickListener(v -> {
                 if (holder.checkBox.isChecked()) {
-                    selected.add(username);
+                    selected.add(name);
                 } else {
-                    selected.remove(username);
+                    selected.remove(name);
                 }
             });
             
-            // Also toggle on row click
             holder.itemView.setOnClickListener(v -> holder.checkBox.performClick());
         }
 
@@ -252,17 +265,17 @@ public class CreateGroupActivity extends AppCompatActivity {
         }
 
         static class UserViewHolder extends RecyclerView.ViewHolder {
-            TextView name;
+            TextView nameText;
             CheckBox checkBox;
 
             UserViewHolder(@NonNull View itemView) {
                 super(itemView);
-                name = itemView.findViewById(R.id.memberName);
+                nameText = itemView.findViewById(R.id.memberName);
                 checkBox = itemView.findViewById(R.id.memberCheckbox);
             }
 
-            void bind(String username, boolean isSelected) {
-                name.setText(username);
+            void bind(String name, boolean isSelected) {
+                nameText.setText(name);
                 checkBox.setChecked(isSelected);
             }
         }

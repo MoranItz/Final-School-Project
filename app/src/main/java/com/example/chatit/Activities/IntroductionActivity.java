@@ -9,29 +9,33 @@ import com.example.chatit.R;
 
 public class IntroductionActivity extends AppCompatActivity {
 
-    // The variables from the layout file
-    public Button getStartedBtn;
+    private Button getStartedButton;
 
+    // This function is responsible for initializing the introduction screen.
+    // Input: Bundle savedInstanceState (the saved state of the activity).
+    // Output: None.
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
-        // Initiate layout instance
         super.onCreate(savedInstanceState);
         setContentView(R.layout.introduction_view);
 
-        // Find the user input variables in the .xml file
-        getStartedBtn = findViewById(R.id.getStartedBtn);
-
-
-        // When the user Tries to register move him to the "handleRegister" function
-        getStartedBtn.setOnClickListener(v -> navigateToLogin());
+        initializeInterface();
     }
 
-    // This function starts a new Intent for the "LoginActivity" window
-    private void navigateToLogin() {
-        // Initiates the Intent to LoginActivity
-        Intent intent = new Intent(this, LoginActivity.class);
-        this.startActivity(intent);
-        this.finish();
+    // This function is responsible for connecting the UI button and setting its click action.
+    // Input: None.
+    // Output: None.
+    private void initializeInterface() {
+        getStartedButton = findViewById(R.id.getStartedBtn);
+        getStartedButton.setOnClickListener(v -> jumpToLoginScreen());
+    }
+
+    // This function is responsible for navigating the user to the login screen and closing this activity.
+    // Input: None.
+    // Output: None.
+    private void jumpToLoginScreen() {
+        Intent loginIntent = new Intent(this, LoginActivity.class);
+        startActivity(loginIntent);
+        finish();
     }
 }
