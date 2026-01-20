@@ -11,6 +11,9 @@ import com.example.chatit.R;
 
 public class SettingsActivity extends AppCompatActivity {
 
+    // Initializes the settings screen and sets up button listeners.
+    // Input: Bundle savedInstanceState (the saved state of the activity).
+    // Output: None.
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -19,6 +22,9 @@ public class SettingsActivity extends AppCompatActivity {
         setupClickListeners();
     }
 
+    // Sets up click listeners for the back button and logout button.
+    // Input: None.
+    // Output: None.
     private void setupClickListeners() {
         ImageView backBtn = findViewById(R.id.backBtn);
         backBtn.setOnClickListener(v -> finish());
@@ -27,6 +33,9 @@ public class SettingsActivity extends AppCompatActivity {
         logoutBtn.setOnClickListener(v -> logout());
     }
 
+    // Logs the user out by clearing the login status and returning to the introduction screen.
+    // Input: None.
+    // Output: None.
     private void logout() {
         SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
         prefs.edit().putBoolean("isLoggedIn", false).apply();

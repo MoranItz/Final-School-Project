@@ -20,6 +20,9 @@ public class ProfileActivity extends AppCompatActivity {
     private String currentUsername;
     private FirebaseFirestore db;
 
+    // Initializes the profile screen and loads the user's current data from Firestore.
+    // Input: Bundle savedInstanceState (the saved state of the activity).
+    // Output: None.
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -33,6 +36,9 @@ public class ProfileActivity extends AppCompatActivity {
         setupClickListeners();
     }
 
+    // Connects UI elements to their corresponding views and configures username field as read-only.
+    // Input: None.
+    // Output: None.
     private void initViews() {
         userNameInput = findViewById(R.id.userNameInput);
         userBioInput = findViewById(R.id.userBioInput);
@@ -44,6 +50,9 @@ public class ProfileActivity extends AppCompatActivity {
         userNameInput.setFocusable(false);
     }
 
+    // Fetches the user's profile data from Firestore and populates the input fields.
+    // Input: None.
+    // Output: None.
     private void loadUserData() {
         if (currentUsername.isEmpty()) return;
 
@@ -61,6 +70,9 @@ public class ProfileActivity extends AppCompatActivity {
                         Toast.makeText(this, "Failed to load profile", Toast.LENGTH_SHORT).show());
     }
 
+    // Sets up click listeners for back button, save button, and delete account button.
+    // Input: None.
+    // Output: None.
     private void setupClickListeners() {
         ImageView backBtn = findViewById(R.id.backBtn);
         backBtn.setOnClickListener(v -> finish());
@@ -69,6 +81,9 @@ public class ProfileActivity extends AppCompatActivity {
         deleteAccountBtn.setOnClickListener(v -> confirmDeleteAccount());
     }
 
+    // Saves the updated biography to Firestore and displays a success or error message.
+    // Input: None.
+    // Output: None.
     private void saveProfile() {
         String biography = userBioInput.getText().toString().trim();
 
@@ -82,6 +97,9 @@ public class ProfileActivity extends AppCompatActivity {
                 });
     }
 
+    // Displays a confirmation dialog to ensure the user wants to delete their account.
+    // Input: None.
+    // Output: None.
     private void confirmDeleteAccount() {
         new AlertDialog.Builder(this)
                 .setTitle("Delete Account")
@@ -91,6 +109,9 @@ public class ProfileActivity extends AppCompatActivity {
                 .show();
     }
 
+    // Deletes the user's account from Firestore, clears local session data, and returns to login screen.
+    // Input: None.
+    // Output: None.
     private void deleteAccount() {
         db.collection("users").document(currentUsername)
                 .delete()
