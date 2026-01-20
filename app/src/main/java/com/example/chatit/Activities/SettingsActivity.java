@@ -40,6 +40,8 @@ public class SettingsActivity extends AppCompatActivity {
         SharedPreferences preferences = getSharedPreferences("UserPrefs", MODE_PRIVATE);
         preferences.edit().putBoolean("isLoggedIn", false).apply();
 
+        stopService(new Intent(this, com.example.chatit.Services.MessageNotificationService.class));
+
         startActivity(new Intent(this, IntroductionActivity.class));
         finish();
     }

@@ -51,6 +51,8 @@ public class HomeActivity extends AppCompatActivity {
         initializeData();
         initializeViews();
         loadGroupsFromFirestore();
+
+        startService(new Intent(this, com.example.chatit.Services.MessageNotificationService.class));
     }
 
     // This function is responsible for verifying if the user has an active login session.
