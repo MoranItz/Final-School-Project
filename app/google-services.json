@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "425211415186",
+    "project_id": "chatit-final-2d2ce",
+    "storage_bucket": "chatit-final-2d2ce.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:425211415186:android:692725589b2c4e77c9744b",
+        "android_client_info": {
+          "package_name": "com.example.chatit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBmpibP5MB1hvqsvq3SH31lmp3csbxdeE4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
