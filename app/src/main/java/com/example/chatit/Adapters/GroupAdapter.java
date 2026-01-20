@@ -4,10 +4,13 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.ImageView;
+import android.graphics.Bitmap;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.chatit.R;
 import com.example.chatit.Struct_Classes.Group;
+import com.example.chatit.Struct_Classes.ImageUtils;
 import java.util.List;
 
 public class GroupAdapter extends RecyclerView.Adapter<GroupAdapter.GroupViewHolder> {
@@ -57,6 +60,7 @@ public class GroupAdapter extends RecyclerView.Adapter<GroupAdapter.GroupViewHol
     // Inner class that holds references to the views for each group item in the list.
     static class GroupViewHolder extends RecyclerView.ViewHolder {
         TextView name, lastMessage, time;
+        ImageView pfp;
 
         // Constructor that finds and initializes the sub-views within the group item layout.
         // Input: View v (the root view of the item layout).
@@ -66,6 +70,7 @@ public class GroupAdapter extends RecyclerView.Adapter<GroupAdapter.GroupViewHol
             name = v.findViewById(R.id.groupName);
             lastMessage = v.findViewById(R.id.lastMessage);
             time = v.findViewById(R.id.groupTime);
+            pfp = v.findViewById(R.id.groupProfileImage);
         }
 
         // Sets the text for the group details and handles the logic for the pluralization of the member count.
@@ -79,6 +84,19 @@ public class GroupAdapter extends RecyclerView.Adapter<GroupAdapter.GroupViewHol
             
             // Set time to empty or default as it is not in old logic
             time.setText(""); 
+
+            // Set group profile picture
+            String imageBase64 = group.getImageBase64();
+            if (imageBase64 != null && !imageBase64.isEmpty()) {
+                Bitmap bitmap = ImageUtils.convertBase64ToBitmap(imageBase64);
+                if (bitmap != null) {
+                    pfp.setImageBitmap(bitmap);
+                } else {
+                    pfp.setImageResource(R.drawable.creategroup_icon);
+                }
+            } else {
+                pfp.setImageResource(R.drawable.creategroup_icon);
+            }
 
             // Attach the listener to the entire row so the group chat opens when clicked
             itemView.setOnClickListener(v -> listener.onGroupClick(group));

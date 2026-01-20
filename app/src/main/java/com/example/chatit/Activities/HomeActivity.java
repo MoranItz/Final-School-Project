@@ -189,6 +189,7 @@ public class HomeActivity extends AppCompatActivity {
                 new User(owner, "", "")
         );
         g.setMembers(members);
+        g.setImageBase64(doc.getString("imageBase64"));
         return g;
     }
 

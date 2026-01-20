@@ -33,15 +33,27 @@
             app:layout_constraintTop_toBottomOf="@id/backBtn" />
 
         <ImageView
-            android:id="@+id/profileIcon"
-            android:layout_width="100dp"
-            android:layout_height="100dp"
+            android:id="@+id/profileImageView"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
             android:layout_marginTop="24dp"
             android:src="@drawable/creategroup_icon"
+            android:scaleType="centerCrop"
+            android:background="@drawable/button_background"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/profileTitle"
-            app:tint="@color/primary_orange" />
+            app:layout_constraintTop_toBottomOf="@id/profileTitle" />
+
+        <ImageView
+            android:id="@+id/cameraIconOverlay"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:src="@android:drawable/ic_menu_camera"
+            android:background="@drawable/button_background"
+            android:padding="6dp"
+            app:layout_constraintBottom_toBottomOf="@id/profileImageView"
+            app:layout_constraintEnd_toEndOf="@id/profileImageView"
+            app:tint="@color/black" />
 
         <!-- Change Username Section -->
         <TextView
@@ -53,7 +65,7 @@
             android:textColor="@color/text_grey"
             android:textSize="14sp"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/profileIcon" />
+            app:layout_constraintTop_toBottomOf="@id/profileImageView" />
 
         <EditText
             android:id="@+id/userNameInput"

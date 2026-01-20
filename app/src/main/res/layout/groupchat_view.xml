@@ -24,17 +24,29 @@
             app:layout_constraintTop_toTopOf="parent"
             app:tint="@color/primary_orange" />
 
+        <ImageView
+            android:id="@+id/groupChatImageView"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="16dp"
+            android:background="@drawable/button_background"
+            android:scaleType="centerCrop"
+            android:src="@drawable/creategroup_icon"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toEndOf="@id/backBtn"
+            app:layout_constraintTop_toTopOf="parent" />
+
         <TextView
             android:id="@+id/chatTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
+            android:layout_marginStart="8dp"
             android:text="Group Chat Name"
             android:textColor="@color/white"
             android:textSize="18sp"
             android:textStyle="bold"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toEndOf="@id/backBtn"
+            app:layout_constraintStart_toEndOf="@id/groupChatImageView"
             app:layout_constraintTop_toTopOf="parent" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>

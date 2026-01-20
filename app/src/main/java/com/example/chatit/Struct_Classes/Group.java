@@ -11,7 +11,7 @@ import java.util.Vector;
 
 public class Group {
     private int groupId;
-    private String groupName, owner, description;
+    private String groupName, owner, description, imageBase64;
     private Vector<User> members;
 
     // CONSTRUCTOR
@@ -30,6 +30,7 @@ public class Group {
     public String getOwner() { return owner; }
     public String getDescription() { return description; }
     public Vector<User> getMembers() { return members; }
+    public String getImageBase64() { return imageBase64; }
 
     // SETTERS
     public void setGroupId(int groupId) { this.groupId = groupId; }
@@ -37,6 +38,7 @@ public class Group {
     public void setGroupOwner(String owner) { this.owner = owner; }
     public void setDescription(String description) { this.description = description; }
     public void setMembers(Vector<User> members) { this.members = members; }
+    public void setImageBase64(String imageBase64) { this.imageBase64 = imageBase64; }
 
 
 

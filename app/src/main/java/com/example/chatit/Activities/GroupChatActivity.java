@@ -11,10 +11,13 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import android.content.Intent;
 
 import com.example.chatit.Adapters.MessageAdapter;
 import com.example.chatit.R;
 import com.example.chatit.Struct_Classes.Message;
+import com.example.chatit.Struct_Classes.ImageUtils;
+import android.graphics.Bitmap;
 
 
 import com.google.firebase.firestore.DocumentChange;
@@ -77,6 +80,21 @@ public class GroupChatActivity extends AppCompatActivity {
         TextView tvGroupName = findViewById(R.id.chatTitle);
         tvGroupName.setText(groupName);
 
+        ImageView ivGroupPic = findViewById(R.id.groupChatImageView);
+        // Fetch group image from Firestore
+        FirebaseFirestore.getInstance().collection("groups").document(String.valueOf(groupId))
+                .get().addOnSuccessListener(doc -> {
+                    if (doc.exists()) {
+                        String imageBase64 = doc.getString("imageBase64");
+                        if (imageBase64 != null && !imageBase64.isEmpty()) {
+                            Bitmap bitmap = ImageUtils.convertBase64ToBitmap(imageBase64);
+                            if (bitmap != null) {
+                                ivGroupPic.setImageBitmap(bitmap);
+                            }
+                        }
+                    }
+                });
+
         return true;
     }
 
@@ -116,9 +134,17 @@ public class GroupChatActivity extends AppCompatActivity {
     private void setupClickListeners() {
         ImageView btnBack = findViewById(R.id.backBtn);
         ImageView btnSend = findViewById(R.id.sendBtn);
+        TextView tvGroupName = findViewById(R.id.chatTitle);
 
         btnBack.setOnClickListener(v -> finish());
         btnSend.setOnClickListener(v -> sendMessage());
+        
+        // Open group profile when clicking group name
+        tvGroupName.setOnClickListener(v -> {
+            Intent intent = new Intent(this, GroupProfileActivity.class);
+            intent.putExtra("groupId", groupId);
+            startActivity(intent);
+        });
     }
 
     // Fetches the initial set of messages from the Firestore database for the current group.
