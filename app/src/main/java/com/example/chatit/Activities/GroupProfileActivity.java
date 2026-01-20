@@ -36,6 +36,7 @@ public class GroupProfileActivity extends AppCompatActivity {
 
     private ImageView groupImageView, backBtn;
     private TextView groupNameDisplay;
+    private androidx.appcompat.widget.AppCompatButton actionButton;
     private RecyclerView membersRecyclerView;
     private MemberAdapter memberAdapter;
     private List<User> memberList;
@@ -44,6 +45,7 @@ public class GroupProfileActivity extends AppCompatActivity {
     private String groupOwner;
     private String currentUsername;
     private FirebaseFirestore db;
+    private List<Map<String, Object>> rawMembersData; // Store raw data for updates
 
     private static final int PICK_IMAGE_REQUEST = 1;
     private static final int CAMERA_REQUEST = 2;
@@ -74,9 +76,14 @@ public class GroupProfileActivity extends AppCompatActivity {
         backBtn = findViewById(R.id.backBtn);
         groupNameDisplay = findViewById(R.id.groupNameDisplay);
         membersRecyclerView = findViewById(R.id.groupMembersRecyclerView);
+        actionButton = findViewById(R.id.actionButton);
 
         memberList = new ArrayList<>();
-        memberAdapter = new MemberAdapter(memberList);
+        memberAdapter = new MemberAdapter(memberList, user -> {
+            if (currentUsername.equals(groupOwner) && !user.getUsername().equals(currentUsername)) {
+                showKickDialog(user.getUsername());
+            }
+        });
         membersRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         membersRecyclerView.setAdapter(memberAdapter);
     }
@@ -88,6 +95,13 @@ public class GroupProfileActivity extends AppCompatActivity {
                         String name = doc.getString("groupName");
                         groupOwner = doc.getString("owner");
                         groupNameDisplay.setText(name);
+
+                        // Configure action button
+                        if (currentUsername.equals(groupOwner)) {
+                            actionButton.setText("Delete Group");
+                        } else {
+                            actionButton.setText("Leave Group");
+                        }
 
                         // Load image
                         String imageBase64 = doc.getString("imageBase64");
@@ -111,11 +125,11 @@ public class GroupProfileActivity extends AppCompatActivity {
 
     @SuppressWarnings("unchecked")
     private void fetchMembers(DocumentSnapshot groupDoc) {
-        List<Map<String, Object>> membersData = (List<Map<String, Object>>) groupDoc.get("members");
-        if (membersData == null) return;
+        rawMembersData = (List<Map<String, Object>>) groupDoc.get("members");
+        if (rawMembersData == null) return;
 
         memberList.clear();
-        for (Map<String, Object> data : membersData) {
+        for (Map<String, Object> data : rawMembersData) {
             String username = (String) data.get("username");
             // Fetch detailed user info (for bios) from users collection
             db.collection("users").document(username).get().addOnSuccessListener(userDoc -> {
@@ -145,6 +159,78 @@ public class GroupProfileActivity extends AppCompatActivity {
                 Toast.makeText(this, "Only the owner can change the group photo", Toast.LENGTH_SHORT).show();
             }
         });
+
+        actionButton.setOnClickListener(v -> {
+            if (currentUsername.equals(groupOwner)) {
+                confirmDeleteGroup();
+            } else {
+                confirmLeaveGroup();
+            }
+        });
+    }
+
+    private void confirmDeleteGroup() {
+        new AlertDialog.Builder(this)
+                .setTitle("Delete Group")
+                .setMessage("Are you sure you want to delete this group? This cannot be undone.")
+                .setPositiveButton("Delete", (dialog, which) -> deleteGroup())
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void deleteGroup() {
+        db.collection("groups").document(String.valueOf(groupId)).delete()
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(this, "Group deleted", Toast.LENGTH_SHORT).show();
+                    Intent intent = new Intent(this, HomeActivity.class);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                    finish();
+                })
+                .addOnFailureListener(e -> Toast.makeText(this, "Failed to delete group", Toast.LENGTH_SHORT).show());
+    }
+
+    private void confirmLeaveGroup() {
+        new AlertDialog.Builder(this)
+                .setTitle("Leave Group")
+                .setMessage("Are you sure you want to leave this group?")
+                .setPositiveButton("Leave", (dialog, which) -> leaveGroup())
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void leaveGroup() {
+        rawMembersData.removeIf(m -> currentUsername.equals(m.get("username")));
+        db.collection("groups").document(String.valueOf(groupId))
+                .update("members", rawMembersData)
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(this, "You left the group", Toast.LENGTH_SHORT).show();
+                    Intent intent = new Intent(this, HomeActivity.class);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                    finish();
+                })
+                .addOnFailureListener(e -> Toast.makeText(this, "Failed to leave group", Toast.LENGTH_SHORT).show());
+    }
+
+    private void showKickDialog(String username) {
+        new AlertDialog.Builder(this)
+                .setTitle("Remove Member")
+                .setMessage("Are you sure you want to kick " + username + " from the group?")
+                .setPositiveButton("Kick", (dialog, which) -> kickUser(username))
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void kickUser(String username) {
+        rawMembersData.removeIf(m -> username.equals(m.get("username")));
+        db.collection("groups").document(String.valueOf(groupId))
+                .update("members", rawMembersData)
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(this, username + " was removed", Toast.LENGTH_SHORT).show();
+                    loadGroupData(); // Refresh list
+                })
+                .addOnFailureListener(e -> Toast.makeText(this, "Failed to remove user", Toast.LENGTH_SHORT).show());
     }
 
     private void showImagePickerDialog() {
@@ -219,8 +305,16 @@ public class GroupProfileActivity extends AppCompatActivity {
     // Member Adapter Inner Class
     private static class MemberAdapter extends RecyclerView.Adapter<MemberAdapter.ViewHolder> {
         private final List<User> members;
+        private final OnItemClickListener listener;
 
-        MemberAdapter(List<User> members) { this.members = members; }
+        public interface OnItemClickListener {
+            void onItemClick(User user);
+        }
+
+        MemberAdapter(List<User> members, OnItemClickListener listener) { 
+            this.members = members;
+            this.listener = listener;
+        }
 
         @NonNull
         @Override
@@ -247,6 +341,8 @@ public class GroupProfileActivity extends AppCompatActivity {
             } else {
                 holder.profilePic.setImageResource(R.drawable.creategroup_icon);
             }
+
+            holder.itemView.setOnClickListener(v -> listener.onItemClick(user));
         }
 
         @Override
